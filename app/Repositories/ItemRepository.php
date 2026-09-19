@@ -2,99 +2,49 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkItemActionRequest;
+use App\Http\Requests\StoreItemRequest;
+use App\Http\Requests\UpdateItemRequest;
 use App\Models\Item;
 use App\Models\ItemMainPrice;
 use App\Models\ProductCatalog;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class ItemRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $filters = $request->only(['search', 'item_category_id', 'brand_id', 'status', 'is_new_launch']);
+
+        $paginated = $this->baseQuery($filters)
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Item $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'items'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('item_name')->get();
+        $filters = $request->only(['search', 'item_category_id', 'brand_id', 'status', 'is_new_launch']);
+
+        $items = $this->baseQuery($filters)->orderBy('item_name')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Item $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Items retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Item
+    public function withStock(Request $request): JsonResponse
     {
-        return Item::with(['mainPrices', 'productCatalog'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
-    }
+        $filters = $request->only(['search', 'item_category_id', 'brand_id', 'status', 'warehouse_id']);
 
-    public function create(array $data, int $organisationId): Item
-    {
-        return DB::transaction(function () use ($data, $organisationId) {
-            $item = Item::create($this->itemAttributes($data, $organisationId));
-
-            $this->syncBasePrice($item, $data);
-            $this->syncSecondaryPrices($item, $data['secondaryUoms'] ?? []);
-            $this->syncProductCatalog($item, $data, $organisationId);
-
-            return $item->load(['mainPrices', 'productCatalog']);
-        });
-    }
-
-    public function update(string $uuid, array $data, int $organisationId): Item
-    {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $item = Item::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
-
-            $item->fill($this->itemAttributes($data, $organisationId, $item));
-            $item->save();
-
-            $this->syncBasePrice($item, $data);
-            $this->syncSecondaryPrices($item, $data['secondaryUoms'] ?? []);
-            $this->syncProductCatalog($item, $data, $organisationId);
-
-            return $item->fresh(['mainPrices', 'productCatalog']);
-        });
-    }
-
-    public function delete(string $uuid, int $organisationId): void
-    {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $item = Item::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
-
-            $item->mainPrices()->delete();
-            $item->productCatalog()->delete();
-            $item->delete();
-        });
-    }
-
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
-    {
-        $query = Item::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
-
-        match ($action) {
-            'activate' => $query->update(['status' => true]),
-            'deactivate' => $query->update(['status' => false]),
-            'delete' => $query->get()->each(function (Item $item) {
-                $item->mainPrices()->delete();
-                $item->productCatalog()->delete();
-                $item->delete();
-            }),
-        };
-    }
-
-    public function withStock(array $filters, int $organisationId): Collection
-    {
-        return $this->filtered($filters, $organisationId)
+        $data = $this->baseQuery($filters)
             ->orderBy('item_name')
             ->get()
             ->map(function (Item $item) {
@@ -104,6 +54,109 @@ class ItemRepository
 
                 return $resource;
             });
+
+        return response()->json([
+            'data' => $data->values(),
+            'message' => 'Items with stock retrieved successfully.',
+        ]);
+    }
+
+    public function show(string $uuid, Request $request): JsonResponse
+    {
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreItemRequest $request): JsonResponse
+    {
+        $item = $this->create($request->validated());
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateItemRequest $request): JsonResponse
+    {
+        $item = $this->performUpdate($uuid, $request->validated());
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item updated successfully.',
+        ]);
+    }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $request->validate(['id' => ['required', 'string']]);
+
+        DB::transaction(function () use ($request) {
+            $item = Item::where('uuid', (string) $request->input('id'))->firstOrFail();
+
+            $item->mainPrices()->delete();
+            $item->productCatalog()->delete();
+            $item->delete();
+        });
+
+        return response()->json(['message' => 'Item deleted successfully.']);
+    }
+
+    public function bulkAction(BulkItemActionRequest $request): JsonResponse
+    {
+        $query = Item::whereIn('uuid', $request->validated('uuids'));
+
+        match ($request->validated('action')) {
+            'activate' => $query->update(['status' => true]),
+            'deactivate' => $query->update(['status' => false]),
+            'delete' => $query->get()->each(function (Item $item) {
+                $item->mainPrices()->delete();
+                $item->productCatalog()->delete();
+                $item->delete();
+            }),
+        };
+
+        return response()->json(['message' => 'Bulk action completed successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): Item
+    {
+        return Item::with(['mainPrices', 'productCatalog', 'itemMajorCategory', 'itemGroup', 'brand', 'itemUomLowerUnit'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function create(array $data): Item
+    {
+        return DB::transaction(function () use ($data) {
+            $item = Item::create($this->itemAttributes($data));
+
+            $this->syncBasePrice($item, $data);
+            $this->syncSecondaryPrices($item, $data['secondaryUoms'] ?? []);
+            $this->syncProductCatalog($item, $data);
+
+            return $item->load(['mainPrices', 'productCatalog', 'itemMajorCategory', 'itemGroup', 'brand', 'itemUomLowerUnit']);
+        });
+    }
+
+    protected function performUpdate(string $uuid, array $data): Item
+    {
+        return DB::transaction(function () use ($uuid, $data) {
+            $item = Item::where('uuid', $uuid)->firstOrFail();
+
+            $item->fill($this->itemAttributes($data, $item));
+            $item->save();
+
+            $this->syncBasePrice($item, $data);
+            $this->syncSecondaryPrices($item, $data['secondaryUoms'] ?? []);
+            $this->syncProductCatalog($item, $data);
+
+            return $item->fresh(['mainPrices', 'productCatalog', 'itemMajorCategory', 'itemGroup', 'brand', 'itemUomLowerUnit']);
+        });
     }
 
     public function toResource(Item $item): array
@@ -128,6 +181,10 @@ class ItemRepository
             : [];
 
         $catalog = $item->relationLoaded('productCatalog') ? $item->productCatalog : null;
+        $category = $item->relationLoaded('itemMajorCategory') ? $item->itemMajorCategory : null;
+        $brand = $item->relationLoaded('brand') ? $item->brand : null;
+        $group = $item->relationLoaded('itemGroup') ? $item->itemGroup : null;
+        $uom = $item->relationLoaded('itemUomLowerUnit') ? $item->itemUomLowerUnit : null;
 
         return [
             'id' => $item->id,
@@ -136,6 +193,10 @@ class ItemRepository
             'brandId' => $item->brand_id,
             'itemGroupId' => $item->item_group_id,
             'itemUomId' => $item->lower_unit_uom_id,
+            'itemCategory' => $category ? ['id' => $category->id, 'uuid' => $category->uuid, 'categoryName' => $category->category_name] : null,
+            'brand' => $brand ? ['id' => $brand->id, 'uuid' => $brand->uuid, 'brandName' => $brand->brand_name] : null,
+            'itemGroup' => $group ? ['id' => $group->id, 'uuid' => $group->uuid, 'code' => $group->code, 'name' => $group->name] : null,
+            'itemUom' => $uom ? ['id' => $uom->id, 'uuid' => $uom->uuid, 'code' => $uom->code, 'name' => $uom->name] : null,
             'itemCode' => $item->item_code,
             'erpCode' => $item->erp_code,
             'itemName' => $item->item_name,
@@ -177,8 +238,6 @@ class ItemRepository
             'vitamin' => $catalog?->vitamin ?? '',
             'catalogImage' => $catalog?->image_string ?? '',
             'currentStage' => $item->current_stage,
-            'createdAt' => $item->created_at?->toISOString(),
-            'updatedAt' => $item->updated_at?->toISOString(),
         ];
     }
 
@@ -190,31 +249,18 @@ class ItemRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
+    /**
+     * Filterable::scopeFilter (via ::filter()) handles search and the
+     * brand_id / status filters from the model's $searchable / $filterable.
+     * item_category_id and is_new_launch are applied manually below — see
+     * the note on Item::$filterable.
+     */
+    protected function baseQuery(array $filters): Builder
     {
-        $query = Item::with(['mainPrices', 'productCatalog'])
-            ->where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('item_code', 'like', "%{$search}%")
-                    ->orWhere('item_name', 'like', "%{$search}%")
-                    ->orWhere('erp_code', 'like', "%{$search}%")
-                    ->orWhere('item_barcode', 'like', "%{$search}%");
-            });
-        }
+        $query = Item::with(['mainPrices', 'productCatalog', 'itemMajorCategory', 'itemGroup', 'brand', 'itemUomLowerUnit'])->filter($filters);
 
         if (! empty($filters['item_category_id'])) {
             $query->where('item_major_category_id', $filters['item_category_id']);
-        }
-
-        if (! empty($filters['brand_id'])) {
-            $query->where('brand_id', $filters['brand_id']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
         }
 
         if (isset($filters['is_new_launch']) && $filters['is_new_launch'] !== '') {
@@ -224,7 +270,7 @@ class ItemRepository
         return $query;
     }
 
-    protected function itemAttributes(array $data, int $organisationId, ?Item $existing = null): array
+    protected function itemAttributes(array $data, ?Item $existing = null): array
     {
         $today = Carbon::today()->toDateString();
         $startDate = $data['launchStartDate'] ?? $existing?->start_date?->toDateString() ?? $today;
@@ -238,7 +284,6 @@ class ItemRepository
         }
 
         $attributes = [
-            'organisation_id' => $organisationId,
             'item_major_category_id' => (int) $data['itemCategoryId'],
             'item_group_id' => isset($data['itemGroupId']) && $data['itemGroupId'] !== ''
                 ? (int) $data['itemGroupId']
@@ -324,7 +369,7 @@ class ItemRepository
         }
     }
 
-    protected function syncProductCatalog(Item $item, array $data, int $organisationId): void
+    protected function syncProductCatalog(Item $item, array $data): void
     {
         $isCatalog = (bool) ($data['isProductCatalog'] ?? false);
         $existing = $item->productCatalog()->withTrashed()->first();
@@ -336,7 +381,6 @@ class ItemRepository
         }
 
         $payload = [
-            'organisation_id' => $organisationId,
             'item_id' => $item->id,
             'barcode' => $data['itemBarcode'] ?? null,
             'net_weight' => $this->nullableDecimal($data['netWeight'] ?? null),

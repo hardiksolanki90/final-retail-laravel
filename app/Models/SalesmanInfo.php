@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -41,7 +43,14 @@ use Illuminate\Support\Str;
 ])]
 class SalesmanInfo extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    // NOTE: search also matches against the linked user's firstname/lastname/email
+    // (a relation, not a plain column) — that OR-branch can't be expressed by the
+    // generic Filterable::scopeFilter, so SalesmanRepository builds the search
+    // clause manually instead of calling ::filter() for the 'search' key.
+    protected array $searchable = ['salesman_code', 'employee_code'];
+    protected array $filterable = ['route_id', 'salesman_type_id', 'salesman_role_id', 'supervisor_id', 'status'];
 
     protected function casts(): array
     {

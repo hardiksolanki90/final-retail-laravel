@@ -2,44 +2,68 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreReasonTypeRequest;
+use App\Http\Requests\UpdateReasonTypeRequest;
 use App\Models\ReasonType;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ReasonTypeRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = ReasonType::where('organisation_id', $request->user()->organisation_id)
+            ->filter($request->only(['search', 'type', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (ReasonType $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'reasonTypes'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = ReasonType::where('organisation_id', $request->user()->organisation_id)
+            ->filter($request->only(['search', 'type', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (ReasonType $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'reasonTypes'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): ReasonType
+    public function show(string $uuid, Request $request): JsonResponse
     {
-        return ReasonType::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid, $request->user()->organisation_id);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Reason type retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): ReasonType
+    public function store(StoreReasonTypeRequest $request): JsonResponse
     {
-        return ReasonType::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = ReasonType::create([
+            'organisation_id' => $request->user()->organisation_id,
             'name' => $data['name'] ?? '',
             'type' => $data['type'] ?? '',
             'code' => $data['code'] ?? null,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Reason type created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): ReasonType
+    public function update(string $uuid, UpdateReasonTypeRequest $request): JsonResponse
     {
-        $reasonType = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $reasonType = $this->findByUuid($uuid, $request->user()->organisation_id);
 
         $reasonType->fill([
             'name' => $data['name'] ?? $reasonType->name,
@@ -49,15 +73,27 @@ class ReasonTypeRepository
         ]);
         $reasonType->save();
 
-        return $reasonType->fresh();
+        return response()->json([
+            'data' => $this->toResource($reasonType->fresh()),
+            'message' => 'Reason type updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid, Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid, $request->user()->organisation_id)->delete();
+
+        return response()->json(['message' => 'Reason type deleted successfully.']);
     }
 
-    public function toResource(ReasonType $reasonType): array
+    protected function findByUuid(string $uuid, int $organisationId): ReasonType
+    {
+        return ReasonType::where('organisation_id', $organisationId)
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(ReasonType $reasonType): array
     {
         return [
             'id' => $reasonType->id,
@@ -66,12 +102,10 @@ class ReasonTypeRepository
             'type' => $reasonType->type,
             'code' => $reasonType->code,
             'status' => (bool) $reasonType->status,
-            'createdAt' => $reasonType->created_at?->toISOString(),
-            'updatedAt' => $reasonType->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(ReasonType $reasonType): array
+    protected function toSelectOption(ReasonType $reasonType): array
     {
         return [
             'id' => $reasonType->id,
@@ -79,28 +113,5 @@ class ReasonTypeRepository
             'name' => $reasonType->name,
             'type' => $reasonType->type,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = ReasonType::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['type'])) {
-            $query->where('type', $filters['type']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

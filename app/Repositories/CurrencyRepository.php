@@ -2,34 +2,52 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreCurrencyRequest;
+use App\Http\Requests\UpdateCurrencyRequest;
+use App\Http\Resources\CurrencyList;
+use App\Http\Resources\CurrencyView;
 use App\Models\Currency;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CurrencyRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = Currency::filter($request->only(['search']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Currency $item) => (new CurrencyList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'currencies'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $items = Currency::filter($request->only(['search']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Currency $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Currencies retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Currency
+    public function show(string $uuid): JsonResponse
     {
-        return Currency::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new CurrencyView($item))->resolve(),
+            'message' => 'Currency retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): Currency
+    public function store(StoreCurrencyRequest $request): JsonResponse
     {
-        return Currency::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+        $isDefault = $data['defaultCurrency'] ?? false;
+
+        $item = Currency::create([
             'currency_master_id' => $data['currencyMasterId'] ?? null,
             'name' => $data['name'] ?? '',
             'symbol' => $data['symbol'] ?? '',
@@ -38,14 +56,24 @@ class CurrencyRepository
             'symbol_native' => $data['symbolNative'] ?? '',
             'decimal_digits' => $data['decimalDigits'] ?? 0,
             'rounding' => $data['rounding'] ?? 0,
-            'default_currency' => $data['defaultCurrency'] ?? false,
+            'default_currency' => $isDefault,
             'format' => $data['format'] ?? '1,234,567.89',
         ]);
+
+        if ($isDefault) {
+            $this->unsetOtherDefaults($item);
+        }
+
+        return response()->json([
+            'data' => (new CurrencyView($item))->resolve(),
+            'message' => 'Currency created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Currency
+    public function update(string $uuid, UpdateCurrencyRequest $request): JsonResponse
     {
-        $currency = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $currency = $this->findByUuid($uuid);
 
         $currency->fill([
             'currency_master_id' => array_key_exists('currencyMasterId', $data) ? $data['currencyMasterId'] : $currency->currency_master_id,
@@ -61,57 +89,48 @@ class CurrencyRepository
         ]);
         $currency->save();
 
-        return $currency->fresh();
-    }
-
-    public function delete(string $uuid, int $organisationId): void
-    {
-        $this->findByUuid($uuid, $organisationId)->delete();
-    }
-
-    public function toResource(Currency $currency): array
-    {
-        return [
-            'id' => $currency->id,
-            'uuid' => $currency->uuid,
-            'currencyMasterId' => $currency->currency_master_id,
-            'name' => $currency->name,
-            'symbol' => $currency->symbol,
-            'code' => $currency->code,
-            'namePlural' => $currency->name_plural,
-            'symbolNative' => $currency->symbol_native,
-            'decimalDigits' => $currency->decimal_digits,
-            'rounding' => $currency->rounding,
-            'defaultCurrency' => (bool) $currency->default_currency,
-            'format' => $currency->format,
-            'createdAt' => $currency->created_at?->toISOString(),
-            'updatedAt' => $currency->updated_at?->toISOString(),
-        ];
-    }
-
-    public function toSelectOption(Currency $currency): array
-    {
-        return [
-            'id' => $currency->id,
-            'uuid' => $currency->uuid,
-            'code' => $currency->code,
-            'name' => $currency->name,
-            'symbol' => $currency->symbol,
-        ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Currency::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            });
+        if ($currency->default_currency) {
+            $this->unsetOtherDefaults($currency);
         }
 
-        return $query;
+        return response()->json([
+            'data' => (new CurrencyView($currency->fresh()))->resolve(),
+            'message' => 'Currency updated successfully.',
+        ]);
+    }
+
+    /**
+     * Only one currency can be default per org — flip every other one off
+     * whenever this currency is (re)marked as the default.
+     */
+    protected function unsetOtherDefaults(Currency $currency): void
+    {
+        Currency::where('organisation_id', $currency->organisation_id)
+            ->where('id', '!=', $currency->id)
+            ->update(['default_currency' => false]);
+    }
+
+    public function destroyByUuid(string $uuid): JsonResponse
+    {
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Currency deleted successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): Currency
+    {
+        return Currency::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toSelectOption(Currency $currency): array
+    {
+        return [
+            'id' => $currency->id,
+            'uuid' => $currency->uuid,
+            'code' => $currency->code,
+            'name' => $currency->name,
+            'symbol' => $currency->symbol,
+        ];
     }
 }
+

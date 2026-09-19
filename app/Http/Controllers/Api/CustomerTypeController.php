@@ -8,57 +8,44 @@ use App\Http\Requests\UpdateCustomerTypeRequest;
 use App\Repositories\CustomerTypeRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class CustomerTypeController extends Controller
+class CustomerTypeController extends Controller implements HasMiddleware
 {
-    public function __construct(protected CustomerTypeRepository $customerTypes) {}
+    protected $repository;
+
+    public function __construct(CustomerTypeRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('customer-type');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->customerTypes->all($request->only(['search', 'status']));
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->customerTypes->toSelectOption($item))->values(),
-            'message' => 'Customer types retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
     public function show(string $uuid): JsonResponse
     {
-        $item = $this->customerTypes->findByUuid($uuid);
-
-        return response()->json([
-            'data' => $this->customerTypes->toResource($item),
-            'message' => 'Customer type retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreCustomerTypeRequest $request): JsonResponse
     {
-        $item = $this->customerTypes->create($request->validated());
-
-        return response()->json([
-            'data' => $this->customerTypes->toResource($item),
-            'message' => 'Customer type created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateCustomerTypeRequest $request): JsonResponse
     {
-        $item = $this->customerTypes->update($uuid, $request->validated());
-
-        return response()->json([
-            'data' => $this->customerTypes->toResource($item),
-            'message' => 'Customer type updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->customerTypes->delete((string) $request->input('id'));
-
-        return response()->json(['message' => 'Customer type deleted successfully.']);
+        return $this->repository->destroy($request);
     }
 }

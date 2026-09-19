@@ -2,43 +2,64 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreItemGroupRequest;
+use App\Http\Requests\UpdateItemGroupRequest;
 use App\Models\ItemGroup;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ItemGroupRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = ItemGroup::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (ItemGroup $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'itemGroups'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $items = ItemGroup::filter($request->only(['search', 'status']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (ItemGroup $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Item groups retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): ItemGroup
+    public function show(string $uuid): JsonResponse
     {
-        return ItemGroup::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item group retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): ItemGroup
+    public function store(StoreItemGroupRequest $request): JsonResponse
     {
-        return ItemGroup::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = ItemGroup::create([
             'code' => $data['code'] ?? '',
             'name' => $data['name'] ?? '',
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item group created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): ItemGroup
+    public function update(string $uuid, UpdateItemGroupRequest $request): JsonResponse
     {
-        $itemGroup = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $itemGroup = $this->findByUuid($uuid);
 
         $itemGroup->fill([
             'code' => $data['code'] ?? $itemGroup->code,
@@ -47,15 +68,26 @@ class ItemGroupRepository
         ]);
         $itemGroup->save();
 
-        return $itemGroup->fresh();
+        return response()->json([
+            'data' => $this->toResource($itemGroup->fresh()),
+            'message' => 'Item group updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Item group deleted successfully.']);
     }
 
-    public function toResource(ItemGroup $itemGroup): array
+    protected function findByUuid(string $uuid): ItemGroup
+    {
+        return ItemGroup::where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(ItemGroup $itemGroup): array
     {
         return [
             'id' => $itemGroup->id,
@@ -63,12 +95,10 @@ class ItemGroupRepository
             'code' => $itemGroup->code,
             'name' => $itemGroup->name,
             'status' => (bool) $itemGroup->status,
-            'createdAt' => $itemGroup->created_at?->toISOString(),
-            'updatedAt' => $itemGroup->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(ItemGroup $itemGroup): array
+    protected function toSelectOption(ItemGroup $itemGroup): array
     {
         return [
             'id' => $itemGroup->id,
@@ -76,24 +106,5 @@ class ItemGroupRepository
             'code' => $itemGroup->code,
             'name' => $itemGroup->name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = ItemGroup::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

@@ -18,9 +18,8 @@ class StoreRouteRequest extends FormRequest
             'routeCode' => ['required_without:code', 'nullable', 'string', 'max:50'],
             'name' => ['required_without:routeName', 'nullable', 'string', 'max:191'],
             'routeName' => ['required_without:name', 'nullable', 'string', 'max:191'],
-            'areaId' => ['nullable', 'integer'],
-            'depotId' => ['nullable', 'integer'],
-            'vanId' => ['nullable', 'integer'],
+            'areaId' => ['required', 'integer'],
+            'depotId' => ['required', 'integer'],
             'status' => ['nullable', 'boolean'],
         ];
     }

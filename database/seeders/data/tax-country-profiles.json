@@ -1,0 +1,6125 @@
+{
+  "schema_version": "1.0.0",
+  "generated_at": "2026-09-12",
+  "purpose": "Country-wise indirect-tax baseline configuration for a Laravel application",
+  "important": [
+    "This is a baseline tax configuration, not legal or tax advice.",
+    "A country-level default rate must not override product/service-specific, destination-based, registration, threshold, exemption, reduced-rate, or tax-nexus rules.",
+    "For the United States, Canada, Brazil, India, Malaysia, Pakistan, China, and other jurisdictional systems, use jurisdiction-specific rule tables before final calculation.",
+    "Keep rates effective-dated so historical invoices can be recalculated using the rules that were active at the transaction date."
+  ],
+  "source": {
+    "primary": "PwC Worldwide Tax Summaries VAT rates quick chart",
+    "primary_url": "https://taxsummaries.pwc.com/quick-charts/value-added-tax-vat-rates",
+    "eu_reference": "European Commission VAT Rates",
+    "eu_url": "https://taxation-customs.ec.europa.eu/taxation/vat/vat-directive/vat-rates_en",
+    "jurisdiction_engine_reference": "Avalara AvaTax API documentation",
+    "avalara_url": "https://developer.avalara.com/api-reference/avatax/rest/v2/methods/TaxContent/TaxRatesByAddress/"
+  },
+  "calculation": {
+    "rounding": "HALF_UP",
+    "precision": 4,
+    "money_precision": 2,
+    "formula": "tax = taxable_amount * rate / 100",
+    "tax_inclusive_formula": "tax = gross_amount - (gross_amount / (1 + rate/100))",
+    "effective_date_required": true,
+    "jurisdiction_required_for": [
+      "US",
+      "CA",
+      "BR",
+      "MY",
+      "PK",
+      "IN"
+    ],
+    "product_tax_code_recommended": true
+  },
+  "special_profiles": {
+    "IN": {
+      "tax_system": "GST",
+      "tax_engine": "india_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "INR",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "union_territory"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        28.0
+      ],
+      "components": [
+        "CGST",
+        "SGST",
+        "IGST",
+        "UTGST",
+        "Compensation Cess"
+      ],
+      "registration_number_label": "GSTIN",
+      "calculation_notes": "Intra-state supplies generally use CGST + SGST/UTGST; inter-state supplies generally use IGST. Product/service classification can change the rate.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "US": {
+      "tax_system": "Sales Tax",
+      "tax_engine": "us_sales_tax",
+      "tax_name": "Sales and Use Tax",
+      "currency": "USD",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "county",
+        "city",
+        "special"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [
+        "State",
+        "County",
+        "City",
+        "Special District"
+      ],
+      "registration_number_label": "State Tax Registration",
+      "calculation_notes": "Rates and taxability are jurisdiction-, product-, customer-, sourcing-, and nexus-dependent. Do not use one national rate.",
+      "rate_source": "Avalara / state and local tax authorities",
+      "status": "jurisdiction_required"
+    },
+    "CA": {
+      "tax_system": "GST/HST/PST/QST",
+      "tax_engine": "canada_sales_tax",
+      "tax_name": "Goods and Services Tax / Harmonized Sales Tax / Provincial Sales Tax / Quebec Sales Tax",
+      "currency": "CAD",
+      "jurisdiction_level": [
+        "country",
+        "province",
+        "territory"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        5.0,
+        15.0
+      ],
+      "components": [
+        "GST",
+        "HST",
+        "PST",
+        "QST",
+        "RST"
+      ],
+      "registration_number_label": "GST/HST Number",
+      "calculation_notes": "Province/territory determines the applicable federal and provincial structure.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "AU": {
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "AUD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "ABN/ACN",
+      "calculation_notes": "Taxability depends on the supply and registration status.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "NZ": {
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "NZD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "GST Number",
+      "calculation_notes": "Zero-rated and exempt supplies require product/service-specific rules.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "GB": {
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "GBP",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Reduced, zero-rated and exempt supplies require product/service classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "SG": {
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "SGD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 9.0,
+      "rate_range": [
+        0.0,
+        9.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "GST Registration Number",
+      "calculation_notes": "Supply and customer status can affect taxability.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "JP": {
+      "tax_system": "Consumption Tax",
+      "tax_engine": "consumption_tax",
+      "tax_name": "Consumption Tax",
+      "currency": "JPY",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "Consumption Tax"
+      ],
+      "registration_number_label": "Qualified Invoice Registration Number",
+      "calculation_notes": "Reduced rate rules apply to qualifying supplies.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "CN": {
+      "tax_system": "VAT",
+      "tax_engine": "china_vat",
+      "tax_name": "Value Added Tax",
+      "currency": "CNY",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        13.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "Taxpayer Identification Number",
+      "calculation_notes": "Standard applicable rate can be 13%, 9%, or 6% depending on goods/services and taxpayer status.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "product_classification_required"
+    },
+    "BR": {
+      "tax_system": "Multiple Consumption Taxes",
+      "tax_engine": "brazil_indirect_tax",
+      "tax_name": "ICMS + ISS + PIS/COFINS + IPI",
+      "currency": "BRL",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "municipality"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [
+        "ICMS",
+        "ISS",
+        "PIS",
+        "COFINS",
+        "IPI"
+      ],
+      "registration_number_label": "CNPJ/CPF",
+      "calculation_notes": "Brazil requires multi-tax, jurisdictional, and product/service-specific handling. Do not model it as one generic VAT rate.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "complex_engine_required"
+    },
+    "MY": {
+      "tax_system": "SST",
+      "tax_engine": "malaysia_sst",
+      "tax_name": "Sales and Service Tax",
+      "currency": "MYR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "Sales Tax",
+        "Service Tax"
+      ],
+      "registration_number_label": "SST Registration Number",
+      "calculation_notes": "Sales tax and service tax have different scope and rates.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "PK": {
+      "tax_system": "Sales Tax",
+      "tax_engine": "pakistan_sales_tax",
+      "tax_name": "Sales Tax / Provincial Service Tax",
+      "currency": "PKR",
+      "jurisdiction_level": [
+        "country",
+        "province"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "Federal Sales Tax",
+        "Provincial Sales Tax on Services"
+      ],
+      "registration_number_label": "Sales Tax Registration Number",
+      "calculation_notes": "Goods are generally subject to federal sales tax; services may be taxed at provincial level with different rates.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "jurisdiction_required"
+    },
+    "ZA": {
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "ZAR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Zero-rated and exempt transactions require classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "AE": {
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "AED",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": [
+        0.0,
+        5.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "TRN",
+      "calculation_notes": "Zero-rated, exempt and designated-zone rules require transaction-specific logic.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    },
+    "SA": {
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "SAR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Zero-rating and exempt treatment depend on supply classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline"
+    }
+  },
+  "countries": [
+    {
+      "code": "AD",
+      "alpha3": "AND",
+      "name": "Andorra",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AE",
+      "alpha3": "ARE",
+      "name": "United Arab Emirates",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "AED",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": [
+        0.0,
+        5.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "TRN",
+      "calculation_notes": "Zero-rated, exempt and designated-zone rules require transaction-specific logic.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AF",
+      "alpha3": "AFG",
+      "name": "Afghanistan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AG",
+      "alpha3": "ATG",
+      "name": "Antigua and Barbuda",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AI",
+      "alpha3": "AIA",
+      "name": "Anguilla",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AL",
+      "alpha3": "ALB",
+      "name": "Albania",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AM",
+      "alpha3": "ARM",
+      "name": "Armenia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AO",
+      "alpha3": "AGO",
+      "name": "Angola",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 14.0,
+      "rate_range": [
+        0.0,
+        14.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AQ",
+      "alpha3": "ATA",
+      "name": "Antarctica",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AR",
+      "alpha3": "ARG",
+      "name": "Argentina",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AS",
+      "alpha3": "ASM",
+      "name": "American Samoa",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AT",
+      "alpha3": "AUT",
+      "name": "Austria",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AU",
+      "alpha3": "AUS",
+      "name": "Australia",
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "AUD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "ABN/ACN",
+      "calculation_notes": "Taxability depends on the supply and registration status.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "AW",
+      "alpha3": "ABW",
+      "name": "Aruba",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AX",
+      "alpha3": "ALA",
+      "name": "Åland Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "AZ",
+      "alpha3": "AZE",
+      "name": "Azerbaijan",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BA",
+      "alpha3": "BIH",
+      "name": "Bosnia and Herzegovina",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 17.0,
+      "rate_range": [
+        0.0,
+        17.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BB",
+      "alpha3": "BRB",
+      "name": "Barbados",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 17.5,
+      "rate_range": [
+        0.0,
+        17.5
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BD",
+      "alpha3": "BGD",
+      "name": "Bangladesh",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BE",
+      "alpha3": "BEL",
+      "name": "Belgium",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BF",
+      "alpha3": "BFA",
+      "name": "Burkina Faso",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BG",
+      "alpha3": "BGR",
+      "name": "Bulgaria",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BH",
+      "alpha3": "BHR",
+      "name": "Bahrain",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BI",
+      "alpha3": "BDI",
+      "name": "Burundi",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BJ",
+      "alpha3": "BEN",
+      "name": "Benin",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BL",
+      "alpha3": "BLM",
+      "name": "Saint Barthélemy",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BM",
+      "alpha3": "BMU",
+      "name": "Bermuda",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BN",
+      "alpha3": "BRN",
+      "name": "Brunei Darussalam",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BO",
+      "alpha3": "BOL",
+      "name": "Bolivia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 13.0,
+      "rate_range": [
+        0.0,
+        13.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BQ",
+      "alpha3": "BES",
+      "name": "Bonaire, Sint Eustatius and Saba",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BR",
+      "alpha3": "BRA",
+      "name": "Brazil",
+      "tax_system": "Multiple Consumption Taxes",
+      "tax_engine": "brazil_indirect_tax",
+      "tax_name": "ICMS + ISS + PIS/COFINS + IPI",
+      "currency": "BRL",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "municipality"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [
+        "ICMS",
+        "ISS",
+        "PIS",
+        "COFINS",
+        "IPI"
+      ],
+      "registration_number_label": "CNPJ/CPF",
+      "calculation_notes": "Brazil requires multi-tax, jurisdictional, and product/service-specific handling. Do not model it as one generic VAT rate.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "complex_engine_required",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BS",
+      "alpha3": "BHS",
+      "name": "Bahamas",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BT",
+      "alpha3": "BTN",
+      "name": "Bhutan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BV",
+      "alpha3": "BVT",
+      "name": "Bouvet Island",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BW",
+      "alpha3": "BWA",
+      "name": "Botswana",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 14.0,
+      "rate_range": [
+        0.0,
+        14.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "BY",
+      "alpha3": "BLR",
+      "name": "Belarus",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "BZ",
+      "alpha3": "BLZ",
+      "name": "Belize",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CA",
+      "alpha3": "CAN",
+      "name": "Canada",
+      "tax_system": "GST/HST/PST/QST",
+      "tax_engine": "canada_sales_tax",
+      "tax_name": "Goods and Services Tax / Harmonized Sales Tax / Provincial Sales Tax / Quebec Sales Tax",
+      "currency": "CAD",
+      "jurisdiction_level": [
+        "country",
+        "province",
+        "territory"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        5.0,
+        15.0
+      ],
+      "components": [
+        "GST",
+        "HST",
+        "PST",
+        "QST",
+        "RST"
+      ],
+      "registration_number_label": "GST/HST Number",
+      "calculation_notes": "Province/territory determines the applicable federal and provincial structure.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CC",
+      "alpha3": "CCK",
+      "name": "Cocos (Keeling) Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CD",
+      "alpha3": "COD",
+      "name": "Democratic Republic of the Congo",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CF",
+      "alpha3": "CAF",
+      "name": "Central African Republic",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CG",
+      "alpha3": "COG",
+      "name": "Republic of the Congo",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.9,
+      "rate_range": [
+        0.0,
+        18.9
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CH",
+      "alpha3": "CHE",
+      "name": "Switzerland",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "CHF",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 8.1,
+      "rate_range": [
+        0.0,
+        8.1
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CI",
+      "alpha3": "CIV",
+      "name": "Côte d’Ivoire",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CK",
+      "alpha3": "COK",
+      "name": "Cook Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CL",
+      "alpha3": "CHL",
+      "name": "Chile",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.0,
+      "rate_range": [
+        0.0,
+        19.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CM",
+      "alpha3": "CMR",
+      "name": "Cameroon",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.25,
+      "rate_range": [
+        0.0,
+        19.25
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CN",
+      "alpha3": "CHN",
+      "name": "China",
+      "tax_system": "VAT",
+      "tax_engine": "china_vat",
+      "tax_name": "Value Added Tax",
+      "currency": "CNY",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        13.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "Taxpayer Identification Number",
+      "calculation_notes": "Standard applicable rate can be 13%, 9%, or 6% depending on goods/services and taxpayer status.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "product_classification_required",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CO",
+      "alpha3": "COL",
+      "name": "Colombia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.0,
+      "rate_range": [
+        0.0,
+        19.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CR",
+      "alpha3": "CRI",
+      "name": "Costa Rica",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 13.0,
+      "rate_range": [
+        0.0,
+        13.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CU",
+      "alpha3": "CUB",
+      "name": "Cuba",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CV",
+      "alpha3": "CPV",
+      "name": "Cabo Verde",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CW",
+      "alpha3": "CUW",
+      "name": "Curaçao",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CX",
+      "alpha3": "CXR",
+      "name": "Christmas Island",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "CY",
+      "alpha3": "CYP",
+      "name": "Cyprus",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.0,
+      "rate_range": [
+        0.0,
+        19.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "CZ",
+      "alpha3": "CZE",
+      "name": "Czechia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "CZK",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "DE",
+      "alpha3": "DEU",
+      "name": "Germany",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.0,
+      "rate_range": [
+        0.0,
+        19.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "DJ",
+      "alpha3": "DJI",
+      "name": "Djibouti",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "DK",
+      "alpha3": "DNK",
+      "name": "Denmark",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "DKK",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 25.0,
+      "rate_range": [
+        0.0,
+        25.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "DM",
+      "alpha3": "DMA",
+      "name": "Dominica",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "DO",
+      "alpha3": "DOM",
+      "name": "Dominican Republic",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "DZ",
+      "alpha3": "DZA",
+      "name": "Algeria",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "EC",
+      "alpha3": "ECU",
+      "name": "Ecuador",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "EE",
+      "alpha3": "EST",
+      "name": "Estonia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 24.0,
+      "rate_range": [
+        0.0,
+        24.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "EG",
+      "alpha3": "EGY",
+      "name": "Egypt",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "EGP",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 14.0,
+      "rate_range": [
+        0.0,
+        14.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "EH",
+      "alpha3": "ESH",
+      "name": "Western Sahara",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "ER",
+      "alpha3": "ERI",
+      "name": "Eritrea",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "ES",
+      "alpha3": "ESP",
+      "name": "Spain",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ET",
+      "alpha3": "ETH",
+      "name": "Ethiopia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "FI",
+      "alpha3": "FIN",
+      "name": "Finland",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 25.5,
+      "rate_range": [
+        0.0,
+        25.5
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "FJ",
+      "alpha3": "FJI",
+      "name": "Fiji",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "FK",
+      "alpha3": "FLK",
+      "name": "Falkland Islands (Malvinas)",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "FM",
+      "alpha3": "FSM",
+      "name": "Micronesia, Federated States of",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "FO",
+      "alpha3": "FRO",
+      "name": "Faroe Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "FR",
+      "alpha3": "FRA",
+      "name": "France",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GA",
+      "alpha3": "GAB",
+      "name": "Gabon",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GB",
+      "alpha3": "GBR",
+      "name": "United Kingdom",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "GBP",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Reduced, zero-rated and exempt supplies require product/service classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GD",
+      "alpha3": "GRD",
+      "name": "Grenada",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GE",
+      "alpha3": "GEO",
+      "name": "Georgia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GF",
+      "alpha3": "GUF",
+      "name": "French Guiana",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GG",
+      "alpha3": "GGY",
+      "name": "Guernsey",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GH",
+      "alpha3": "GHA",
+      "name": "Ghana",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GI",
+      "alpha3": "GIB",
+      "name": "Gibraltar",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GL",
+      "alpha3": "GRL",
+      "name": "Greenland",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GM",
+      "alpha3": "GMB",
+      "name": "Gambia",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GN",
+      "alpha3": "GIN",
+      "name": "Guinea",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GP",
+      "alpha3": "GLP",
+      "name": "Guadeloupe",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GQ",
+      "alpha3": "GNQ",
+      "name": "Equatorial Guinea",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GR",
+      "alpha3": "GRC",
+      "name": "Greece",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 24.0,
+      "rate_range": [
+        0.0,
+        24.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GS",
+      "alpha3": "SGS",
+      "name": "South Georgia and the South Sandwich Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GT",
+      "alpha3": "GTM",
+      "name": "Guatemala",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.0,
+      "rate_range": [
+        0.0,
+        12.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "GU",
+      "alpha3": "GUM",
+      "name": "Guam",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GW",
+      "alpha3": "GNB",
+      "name": "Guinea-Bissau",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "GY",
+      "alpha3": "GUY",
+      "name": "Guyana",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 14.0,
+      "rate_range": [
+        0.0,
+        14.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "HK",
+      "alpha3": "HKG",
+      "name": "Hong Kong",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "HM",
+      "alpha3": "HMD",
+      "name": "Heard Island and McDonald Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "HN",
+      "alpha3": "HND",
+      "name": "Honduras",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "HR",
+      "alpha3": "HRV",
+      "name": "Croatia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 25.0,
+      "rate_range": [
+        0.0,
+        25.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "HT",
+      "alpha3": "HTI",
+      "name": "Haiti",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "HU",
+      "alpha3": "HUN",
+      "name": "Hungary",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "HUF",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 27.0,
+      "rate_range": [
+        0.0,
+        27.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ID",
+      "alpha3": "IDN",
+      "name": "Indonesia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "IDR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.0,
+      "rate_range": [
+        0.0,
+        12.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IE",
+      "alpha3": "IRL",
+      "name": "Ireland",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 23.0,
+      "rate_range": [
+        0.0,
+        23.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IL",
+      "alpha3": "ISR",
+      "name": "Israel",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IM",
+      "alpha3": "IMN",
+      "name": "Isle of Man",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "IN",
+      "alpha3": "IND",
+      "name": "India",
+      "tax_system": "GST",
+      "tax_engine": "india_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "INR",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "union_territory"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        28.0
+      ],
+      "components": [
+        "CGST",
+        "SGST",
+        "IGST",
+        "UTGST",
+        "Compensation Cess"
+      ],
+      "registration_number_label": "GSTIN",
+      "calculation_notes": "Intra-state supplies generally use CGST + SGST/UTGST; inter-state supplies generally use IGST. Product/service classification can change the rate.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IO",
+      "alpha3": "IOT",
+      "name": "British Indian Ocean Territory",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "IQ",
+      "alpha3": "IRQ",
+      "name": "Iraq",
+      "tax_system": "Sales Tax",
+      "tax_engine": "sales_tax",
+      "tax_name": "Sales Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [
+        "Sales Tax"
+      ],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Use a jurisdiction- and product/service-specific rule table for final tax calculation.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "jurisdiction_required",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IR",
+      "alpha3": "IRN",
+      "name": "Iran, Islamic Republic of",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "IS",
+      "alpha3": "ISL",
+      "name": "Iceland",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 24.0,
+      "rate_range": [
+        0.0,
+        24.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "IT",
+      "alpha3": "ITA",
+      "name": "Italy",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 22.0,
+      "rate_range": [
+        0.0,
+        22.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "JE",
+      "alpha3": "JEY",
+      "name": "Jersey",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": [
+        0.0,
+        5.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "JM",
+      "alpha3": "JAM",
+      "name": "Jamaica",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "JO",
+      "alpha3": "JOR",
+      "name": "Jordan",
+      "tax_system": "Sales Tax",
+      "tax_engine": "sales_tax",
+      "tax_name": "Sales Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": null,
+      "components": [
+        "Sales Tax"
+      ],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Use a jurisdiction- and product/service-specific rule table for final tax calculation.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "JP",
+      "alpha3": "JPN",
+      "name": "Japan",
+      "tax_system": "Consumption Tax",
+      "tax_engine": "consumption_tax",
+      "tax_name": "Consumption Tax",
+      "currency": "JPY",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "Consumption Tax"
+      ],
+      "registration_number_label": "Qualified Invoice Registration Number",
+      "calculation_notes": "Reduced rate rules apply to qualifying supplies.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "KE",
+      "alpha3": "KEN",
+      "name": "Kenya",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "KES",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "KG",
+      "alpha3": "KGZ",
+      "name": "Kyrgyzstan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KH",
+      "alpha3": "KHM",
+      "name": "Cambodia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "KI",
+      "alpha3": "KIR",
+      "name": "Kiribati",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KM",
+      "alpha3": "COM",
+      "name": "Comoros",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KN",
+      "alpha3": "KNA",
+      "name": "Saint Kitts and Nevis",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KP",
+      "alpha3": "PRK",
+      "name": "Korea, Democratic People's Republic of",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KR",
+      "alpha3": "KOR",
+      "name": "South Korea",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "KRW",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "KW",
+      "alpha3": "KWT",
+      "name": "Kuwait",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KY",
+      "alpha3": "CYM",
+      "name": "Cayman Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "KZ",
+      "alpha3": "KAZ",
+      "name": "Kazakhstan",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LA",
+      "alpha3": "LAO",
+      "name": "Laos",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LB",
+      "alpha3": "LBN",
+      "name": "Lebanon",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 11.0,
+      "rate_range": [
+        0.0,
+        11.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LC",
+      "alpha3": "LCA",
+      "name": "Saint Lucia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.5,
+      "rate_range": [
+        0.0,
+        12.5
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LI",
+      "alpha3": "LIE",
+      "name": "Liechtenstein",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 8.1,
+      "rate_range": [
+        0.0,
+        8.1
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LK",
+      "alpha3": "LKA",
+      "name": "Sri Lanka",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "LR",
+      "alpha3": "LBR",
+      "name": "Liberia",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "LS",
+      "alpha3": "LSO",
+      "name": "Lesotho",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "LT",
+      "alpha3": "LTU",
+      "name": "Lithuania",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LU",
+      "alpha3": "LUX",
+      "name": "Luxembourg",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 17.0,
+      "rate_range": [
+        0.0,
+        17.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LV",
+      "alpha3": "LVA",
+      "name": "Latvia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "LY",
+      "alpha3": "LBY",
+      "name": "Libya",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MA",
+      "alpha3": "MAR",
+      "name": "Morocco",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MC",
+      "alpha3": "MCO",
+      "name": "Monaco",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MD",
+      "alpha3": "MDA",
+      "name": "Moldova, Republic of",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ME",
+      "alpha3": "MNE",
+      "name": "Montenegro",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MF",
+      "alpha3": "MAF",
+      "name": "Saint Martin (French part)",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MG",
+      "alpha3": "MDG",
+      "name": "Madagascar",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MH",
+      "alpha3": "MHL",
+      "name": "Marshall Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MK",
+      "alpha3": "MKD",
+      "name": "North Macedonia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ML",
+      "alpha3": "MLI",
+      "name": "Mali",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MM",
+      "alpha3": "MMR",
+      "name": "Myanmar",
+      "tax_system": "Commercial Tax",
+      "tax_engine": "commercial_tax",
+      "tax_name": "Commercial Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": null,
+      "components": [
+        "Commercial Tax"
+      ],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Use a jurisdiction- and product/service-specific rule table for final tax calculation.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MN",
+      "alpha3": "MNG",
+      "name": "Mongolia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MO",
+      "alpha3": "MAC",
+      "name": "Macao",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MP",
+      "alpha3": "MNP",
+      "name": "Northern Mariana Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MQ",
+      "alpha3": "MTQ",
+      "name": "Martinique",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MR",
+      "alpha3": "MRT",
+      "name": "Mauritania",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MS",
+      "alpha3": "MSR",
+      "name": "Montserrat",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MT",
+      "alpha3": "MLT",
+      "name": "Malta",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MU",
+      "alpha3": "MUS",
+      "name": "Mauritius",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MV",
+      "alpha3": "MDV",
+      "name": "Maldives",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MW",
+      "alpha3": "MWI",
+      "name": "Malawi",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "MX",
+      "alpha3": "MEX",
+      "name": "Mexico",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "MXN",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MY",
+      "alpha3": "MYS",
+      "name": "Malaysia",
+      "tax_system": "SST",
+      "tax_engine": "malaysia_sst",
+      "tax_name": "Sales and Service Tax",
+      "currency": "MYR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "Sales Tax",
+        "Service Tax"
+      ],
+      "registration_number_label": "SST Registration Number",
+      "calculation_notes": "Sales tax and service tax have different scope and rates.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "MZ",
+      "alpha3": "MOZ",
+      "name": "Mozambique",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NA",
+      "alpha3": "NAM",
+      "name": "Namibia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NC",
+      "alpha3": "NCL",
+      "name": "New Caledonia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 11.0,
+      "rate_range": [
+        0.0,
+        11.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NE",
+      "alpha3": "NER",
+      "name": "Niger",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "NF",
+      "alpha3": "NFK",
+      "name": "Norfolk Island",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "NG",
+      "alpha3": "NGA",
+      "name": "Nigeria",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "NGN",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 7.5,
+      "rate_range": [
+        0.0,
+        7.5
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NI",
+      "alpha3": "NIC",
+      "name": "Nicaragua",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NL",
+      "alpha3": "NLD",
+      "name": "Netherlands",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NO",
+      "alpha3": "NOR",
+      "name": "Norway",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "NOK",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 25.0,
+      "rate_range": [
+        0.0,
+        25.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "NP",
+      "alpha3": "NPL",
+      "name": "Nepal",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "NR",
+      "alpha3": "NRU",
+      "name": "Nauru",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "NU",
+      "alpha3": "NIU",
+      "name": "Niue",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "NZ",
+      "alpha3": "NZL",
+      "name": "New Zealand",
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "NZD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "GST Number",
+      "calculation_notes": "Zero-rated and exempt supplies require product/service-specific rules.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "OM",
+      "alpha3": "OMN",
+      "name": "Oman",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": [
+        0.0,
+        5.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PA",
+      "alpha3": "PAN",
+      "name": "Panama",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 7.0,
+      "rate_range": [
+        0.0,
+        7.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PE",
+      "alpha3": "PER",
+      "name": "Peru",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PF",
+      "alpha3": "PYF",
+      "name": "French Polynesia",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "PG",
+      "alpha3": "PNG",
+      "name": "Papua New Guinea",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PH",
+      "alpha3": "PHL",
+      "name": "Philippines",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "PHP",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.0,
+      "rate_range": [
+        0.0,
+        12.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PK",
+      "alpha3": "PAK",
+      "name": "Pakistan",
+      "tax_system": "Sales Tax",
+      "tax_engine": "pakistan_sales_tax",
+      "tax_name": "Sales Tax / Provincial Service Tax",
+      "currency": "PKR",
+      "jurisdiction_level": [
+        "country",
+        "province"
+      ],
+      "default_rate": null,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "Federal Sales Tax",
+        "Provincial Sales Tax on Services"
+      ],
+      "registration_number_label": "Sales Tax Registration Number",
+      "calculation_notes": "Goods are generally subject to federal sales tax; services may be taxed at provincial level with different rates.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "jurisdiction_required",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PL",
+      "alpha3": "POL",
+      "name": "Poland",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "PLN",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 23.0,
+      "rate_range": [
+        0.0,
+        23.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PM",
+      "alpha3": "SPM",
+      "name": "Saint Pierre and Miquelon",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "PN",
+      "alpha3": "PCN",
+      "name": "Pitcairn",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "PR",
+      "alpha3": "PRI",
+      "name": "Puerto Rico",
+      "tax_system": "Sales and Use Tax",
+      "tax_engine": "us_sales_tax",
+      "tax_name": "Sales and Use Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 11.5,
+      "rate_range": null,
+      "components": [
+        "Sales and Use Tax"
+      ],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Use a jurisdiction- and product/service-specific rule table for final tax calculation.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PS",
+      "alpha3": "PSE",
+      "name": "Palestine, State of",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "PT",
+      "alpha3": "PRT",
+      "name": "Portugal",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 23.0,
+      "rate_range": [
+        0.0,
+        23.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "PW",
+      "alpha3": "PLW",
+      "name": "Palau",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "PY",
+      "alpha3": "PRY",
+      "name": "Paraguay",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "QA",
+      "alpha3": "QAT",
+      "name": "Qatar",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "RE",
+      "alpha3": "REU",
+      "name": "Réunion",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "RO",
+      "alpha3": "ROU",
+      "name": "Romania",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 21.0,
+      "rate_range": [
+        0.0,
+        21.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "RS",
+      "alpha3": "SRB",
+      "name": "Serbia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "RU",
+      "alpha3": "RUS",
+      "name": "Russia",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "RW",
+      "alpha3": "RWA",
+      "name": "Rwanda",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SA",
+      "alpha3": "SAU",
+      "name": "Saudi Arabia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "SAR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Zero-rating and exempt treatment depend on supply classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SB",
+      "alpha3": "SLB",
+      "name": "Solomon Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SC",
+      "alpha3": "SYC",
+      "name": "Seychelles",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SD",
+      "alpha3": "SDN",
+      "name": "Sudan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SE",
+      "alpha3": "SWE",
+      "name": "Sweden",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "SEK",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 25.0,
+      "rate_range": [
+        0.0,
+        25.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SG",
+      "alpha3": "SGP",
+      "name": "Singapore",
+      "tax_system": "GST",
+      "tax_engine": "vat_gst",
+      "tax_name": "Goods and Services Tax",
+      "currency": "SGD",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 9.0,
+      "rate_range": [
+        0.0,
+        9.0
+      ],
+      "components": [
+        "GST"
+      ],
+      "registration_number_label": "GST Registration Number",
+      "calculation_notes": "Supply and customer status can affect taxability.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SH",
+      "alpha3": "SHN",
+      "name": "Saint Helena, Ascension and Tristan da Cunha",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SI",
+      "alpha3": "SVN",
+      "name": "Slovenia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 22.0,
+      "rate_range": [
+        0.0,
+        22.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SJ",
+      "alpha3": "SJM",
+      "name": "Svalbard and Jan Mayen",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SK",
+      "alpha3": "SVK",
+      "name": "Slovakia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 23.0,
+      "rate_range": [
+        0.0,
+        23.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SL",
+      "alpha3": "SLE",
+      "name": "Sierra Leone",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SM",
+      "alpha3": "SMR",
+      "name": "San Marino",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SN",
+      "alpha3": "SEN",
+      "name": "Senegal",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SO",
+      "alpha3": "SOM",
+      "name": "Somalia",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SR",
+      "alpha3": "SUR",
+      "name": "Suriname",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SS",
+      "alpha3": "SSD",
+      "name": "South Sudan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "ST",
+      "alpha3": "STP",
+      "name": "Sao Tome and Principe",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SV",
+      "alpha3": "SLV",
+      "name": "El Salvador",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 13.0,
+      "rate_range": [
+        0.0,
+        13.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "SX",
+      "alpha3": "SXM",
+      "name": "Sint Maarten (Dutch part)",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SY",
+      "alpha3": "SYR",
+      "name": "Syrian Arab Republic",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "SZ",
+      "alpha3": "SWZ",
+      "name": "Eswatini",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TC",
+      "alpha3": "TCA",
+      "name": "Turks and Caicos Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TD",
+      "alpha3": "TCD",
+      "name": "Chad",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TF",
+      "alpha3": "ATF",
+      "name": "French Southern Territories",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TG",
+      "alpha3": "TGO",
+      "name": "Togo",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TH",
+      "alpha3": "THA",
+      "name": "Thailand",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "THB",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 7.0,
+      "rate_range": [
+        0.0,
+        7.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TJ",
+      "alpha3": "TJK",
+      "name": "Tajikistan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TK",
+      "alpha3": "TKL",
+      "name": "Tokelau",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TL",
+      "alpha3": "TLS",
+      "name": "Timor-Leste",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TM",
+      "alpha3": "TKM",
+      "name": "Turkmenistan",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TN",
+      "alpha3": "TUN",
+      "name": "Tunisia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 19.0,
+      "rate_range": [
+        0.0,
+        19.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TO",
+      "alpha3": "TON",
+      "name": "Tonga",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TR",
+      "alpha3": "TUR",
+      "name": "Türkiye",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "TRY",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TT",
+      "alpha3": "TTO",
+      "name": "Trinidad and Tobago",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.5,
+      "rate_range": [
+        0.0,
+        12.5
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TV",
+      "alpha3": "TUV",
+      "name": "Tuvalu",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "TW",
+      "alpha3": "TWN",
+      "name": "Taiwan, Province of China",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "VAT",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 5.0,
+      "rate_range": null,
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Use a jurisdiction- and product/service-specific rule table for final tax calculation.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "TZ",
+      "alpha3": "TZA",
+      "name": "Tanzania, United Republic of",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "UA",
+      "alpha3": "UKR",
+      "name": "Ukraine",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 20.0,
+      "rate_range": [
+        0.0,
+        20.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "UG",
+      "alpha3": "UGA",
+      "name": "Uganda",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 18.0,
+      "rate_range": [
+        0.0,
+        18.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "UM",
+      "alpha3": "UMI",
+      "name": "United States Minor Outlying Islands",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "US",
+      "alpha3": "USA",
+      "name": "United States",
+      "tax_system": "Sales Tax",
+      "tax_engine": "us_sales_tax",
+      "tax_name": "Sales and Use Tax",
+      "currency": "USD",
+      "jurisdiction_level": [
+        "country",
+        "state",
+        "county",
+        "city",
+        "special"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [
+        "State",
+        "County",
+        "City",
+        "Special District"
+      ],
+      "registration_number_label": "State Tax Registration",
+      "calculation_notes": "Rates and taxability are jurisdiction-, product-, customer-, sourcing-, and nexus-dependent. Do not use one national rate.",
+      "rate_source": "Avalara / state and local tax authorities",
+      "status": "jurisdiction_required",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "UY",
+      "alpha3": "URY",
+      "name": "Uruguay",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 22.0,
+      "rate_range": [
+        0.0,
+        22.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "UZ",
+      "alpha3": "UZB",
+      "name": "Uzbekistan",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 12.0,
+      "rate_range": [
+        0.0,
+        12.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "VA",
+      "alpha3": "VAT",
+      "name": "Holy See (Vatican City State)",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "VC",
+      "alpha3": "VCT",
+      "name": "Saint Vincent and the Grenadines",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "VE",
+      "alpha3": "VEN",
+      "name": "Venezuela, Bolivarian Republic of",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "VG",
+      "alpha3": "VGB",
+      "name": "Virgin Islands, British",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "VI",
+      "alpha3": "VIR",
+      "name": "Virgin Islands, U.S.",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "VN",
+      "alpha3": "VNM",
+      "name": "Vietnam",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "VND",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 10.0,
+      "rate_range": [
+        0.0,
+        10.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "VU",
+      "alpha3": "VUT",
+      "name": "Vanuatu",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "WF",
+      "alpha3": "WLF",
+      "name": "Wallis and Futuna",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "WS",
+      "alpha3": "WSM",
+      "name": "Samoa",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "YE",
+      "alpha3": "YEM",
+      "name": "Yemen",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "YT",
+      "alpha3": "MYT",
+      "name": "Mayotte",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    },
+    {
+      "code": "ZA",
+      "alpha3": "ZAF",
+      "name": "South Africa",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": "ZAR",
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 15.0,
+      "rate_range": [
+        0.0,
+        15.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Zero-rated and exempt transactions require classification.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ZM",
+      "alpha3": "ZMB",
+      "name": "Zambia",
+      "tax_system": "VAT",
+      "tax_engine": "vat_gst",
+      "tax_name": "Value Added Tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country"
+      ],
+      "default_rate": 16.0,
+      "rate_range": [
+        0.0,
+        16.0
+      ],
+      "components": [
+        "VAT"
+      ],
+      "registration_number_label": "VAT Number",
+      "calculation_notes": "Default rate is a baseline only. Reduced, zero-rated, exempt, digital-service, import, and threshold rules may apply.",
+      "rate_source": "PwC Worldwide Tax Summaries",
+      "status": "verified_baseline",
+      "verified_at": "2026-09-12"
+    },
+    {
+      "code": "ZW",
+      "alpha3": "ZWE",
+      "name": "Zimbabwe",
+      "tax_system": "Manual / Local Indirect Tax",
+      "tax_engine": "manual_tax_rules",
+      "tax_name": "Local indirect tax",
+      "currency": null,
+      "jurisdiction_level": [
+        "country",
+        "region"
+      ],
+      "default_rate": null,
+      "rate_range": null,
+      "components": [],
+      "registration_number_label": "Tax Registration Number",
+      "calculation_notes": "Tax profile requires jurisdiction-specific validation before production calculation.",
+      "rate_source": null,
+      "status": "manual_review_required",
+      "verified_at": null
+    }
+  ]
+}

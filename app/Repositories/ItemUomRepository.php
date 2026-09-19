@@ -2,43 +2,64 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreItemUomRequest;
+use App\Http\Requests\UpdateItemUomRequest;
 use App\Models\ItemUom;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ItemUomRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = ItemUom::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (ItemUom $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'itemUoms'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $items = ItemUom::filter($request->only(['search', 'status']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (ItemUom $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Item UOMs retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): ItemUom
+    public function show(string $uuid): JsonResponse
     {
-        return ItemUom::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item UOM retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): ItemUom
+    public function store(StoreItemUomRequest $request): JsonResponse
     {
-        return ItemUom::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = ItemUom::create([
             'code' => $data['code'] ?? '',
             'name' => $data['name'] ?? '',
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Item UOM created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): ItemUom
+    public function update(string $uuid, UpdateItemUomRequest $request): JsonResponse
     {
-        $itemUom = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $itemUom = $this->findByUuid($uuid);
 
         $itemUom->fill([
             'code' => $data['code'] ?? $itemUom->code,
@@ -47,15 +68,26 @@ class ItemUomRepository
         ]);
         $itemUom->save();
 
-        return $itemUom->fresh();
+        return response()->json([
+            'data' => $this->toResource($itemUom->fresh()),
+            'message' => 'Item UOM updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Item UOM deleted successfully.']);
     }
 
-    public function toResource(ItemUom $itemUom): array
+    protected function findByUuid(string $uuid): ItemUom
+    {
+        return ItemUom::where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(ItemUom $itemUom): array
     {
         return [
             'id' => $itemUom->id,
@@ -63,12 +95,10 @@ class ItemUomRepository
             'code' => $itemUom->code,
             'name' => $itemUom->name,
             'status' => (bool) $itemUom->status,
-            'createdAt' => $itemUom->created_at?->toISOString(),
-            'updatedAt' => $itemUom->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(ItemUom $itemUom): array
+    protected function toSelectOption(ItemUom $itemUom): array
     {
         return [
             'id' => $itemUom->id,
@@ -76,24 +106,5 @@ class ItemUomRepository
             'code' => $itemUom->code,
             'name' => $itemUom->name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = ItemUom::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $query) use ($search) {
-                $query->where('code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

@@ -17,6 +17,10 @@ return new class extends Migration
             $table->index(['organisation_id', 'route_code']);
             $table->index(['organisation_id', 'status']);
 
+            if (! Schema::hasColumn('routes', 'van_id')) {
+                $table->unsignedBigInteger('van_id')->nullable();
+            }
+
             $table->foreign('area_id')->references('id')->on('areas');
             $table->foreign('depot_id')->references('id')->on('depots');
             $table->foreign('van_id')->references('id')->on('vans')->nullOnDelete();

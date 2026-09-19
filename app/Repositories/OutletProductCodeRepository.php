@@ -2,42 +2,63 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreOutletProductCodeRequest;
+use App\Http\Requests\UpdateOutletProductCodeRequest;
 use App\Models\OutletProductCode;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class OutletProductCodeRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = OutletProductCode::filter($request->only(['search']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (OutletProductCode $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'outletProductCodes'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
-    }
+        $items = OutletProductCode::filter($request->only(['search']))->orderBy('id')->get();
 
-    public function findByUuid(string $uuid, int $organisationId): OutletProductCode
-    {
-        return OutletProductCode::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
-    }
-
-    public function create(array $data, int $organisationId): OutletProductCode
-    {
-        return OutletProductCode::create([
-            'organisation_id' => $organisationId,
-            'name' => $data['name'],
-            'code' => $data['code'],
+        return response()->json([
+            'data' => $items->map(fn (OutletProductCode $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Outlet product codes retrieved successfully.',
         ]);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): OutletProductCode
+    public function show(string $uuid): JsonResponse
     {
-        $outletProductCode = $this->findByUuid($uuid, $organisationId);
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Outlet product code retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreOutletProductCodeRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $item = OutletProductCode::create([
+            'name' => $data['name'],
+            'code' => $data['code'],
+        ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Outlet product code created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateOutletProductCodeRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $outletProductCode = $this->findByUuid($uuid);
 
         $outletProductCode->fill([
             'name' => $data['name'] ?? $outletProductCode->name,
@@ -45,27 +66,36 @@ class OutletProductCodeRepository
         ]);
         $outletProductCode->save();
 
-        return $outletProductCode->fresh();
+        return response()->json([
+            'data' => $this->toResource($outletProductCode->fresh()),
+            'message' => 'Outlet product code updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Outlet product code deleted successfully.']);
     }
 
-    public function toResource(OutletProductCode $outletProductCode): array
+    protected function findByUuid(string $uuid): OutletProductCode
+    {
+        return OutletProductCode::where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(OutletProductCode $outletProductCode): array
     {
         return [
             'id' => $outletProductCode->id,
             'uuid' => $outletProductCode->uuid,
             'name' => $outletProductCode->name,
             'code' => $outletProductCode->code,
-            'createdAt' => $outletProductCode->created_at?->toISOString(),
-            'updatedAt' => $outletProductCode->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(OutletProductCode $outletProductCode): array
+    protected function toSelectOption(OutletProductCode $outletProductCode): array
     {
         return [
             'id' => $outletProductCode->id,
@@ -73,20 +103,5 @@ class OutletProductCodeRepository
             'name' => $outletProductCode->name,
             'code' => $outletProductCode->code,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = OutletProductCode::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('code', 'like', "%{$search}%");
-            });
-        }
-
-        return $query;
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
 
 #[Fillable([
     'uuid',
@@ -31,7 +32,7 @@ use Illuminate\Support\Str;
 ])]
 class ProductCatalog extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid;
 
     protected function casts(): array
     {

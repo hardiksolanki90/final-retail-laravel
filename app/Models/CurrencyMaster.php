@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\Filterable;
 
 #[Fillable([
     'name',
@@ -18,7 +19,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 ])]
 class CurrencyMaster extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Filterable;
+
+    protected array $searchable = ['name', 'code'];
+    protected array $filterable = [];
 
     protected function casts(): array
     {

@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid', 'organisation_id', 'order_id', 'customer_id', 'salesman_id', 'reason_id',
@@ -23,7 +25,11 @@ use Illuminate\Support\Str;
 ])]
 class Delivery extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['delivery_number', 'invoice_number'];
+    protected array $filterable = ['customer_id', 'salesman_id', 'current_stage', 'status'];
+    protected string $dateRangeColumn = 'delivery_date';
 
     protected function casts(): array
     {

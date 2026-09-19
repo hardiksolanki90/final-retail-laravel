@@ -8,83 +8,49 @@ use App\Http\Requests\UpdateItemGroupRequest;
 use App\Repositories\ItemGroupRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class ItemGroupController extends Controller
+class ItemGroupController extends Controller implements HasMiddleware
 {
-    public function __construct(protected ItemGroupRepository $itemGroups) {}
+    protected $repository;
+
+    public function __construct(ItemGroupRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('item-group');
+    }
 
     public function list(Request $request): JsonResponse
     {
-        $paginated = $this->itemGroups->list(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-            (int) $request->input('per_page', 15),
-        );
-
-        return response()->json([
-            'data' => $paginated->getCollection()->map(fn ($item) => $this->itemGroups->toResource($item))->values(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-                'last_page' => $paginated->lastPage(),
-                'has_more_pages' => $paginated->hasMorePages(),
-                'next_page_url' => $paginated->nextPageUrl(),
-                'prev_page_url' => $paginated->previousPageUrl(),
-            ],
-            'message' => 'Item groups retrieved successfully.',
-        ]);
+        return $this->repository->list($request);
     }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->itemGroups->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->itemGroups->toSelectOption($item))->values(),
-            'message' => 'Item groups retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->itemGroups->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->itemGroups->toResource($item),
-            'message' => 'Item group retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreItemGroupRequest $request): JsonResponse
     {
-        $item = $this->itemGroups->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->itemGroups->toResource($item),
-            'message' => 'Item group created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateItemGroupRequest $request): JsonResponse
     {
-        $item = $this->itemGroups->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->itemGroups->toResource($item),
-            'message' => 'Item group updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
-    public function destroy(Request $request): JsonResponse
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->itemGroups->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Item group deleted successfully.']);
+        return $this->repository->destroyByUuid($uuid);
     }
 }

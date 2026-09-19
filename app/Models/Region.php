@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -19,7 +21,10 @@ use Illuminate\Support\Str;
 ])]
 class Region extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['region_code', 'region_name'];
+    protected array $filterable = ['country_id', 'region_status'];
 
     protected function casts(): array
     {

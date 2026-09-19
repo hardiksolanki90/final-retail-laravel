@@ -2,45 +2,74 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreBankInformationRequest;
+use App\Http\Requests\UpdateBankInformationRequest;
+use App\Http\Resources\BankInformationList;
+use App\Http\Resources\BankInformationView;
 use App\Models\BankInformation;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class BankInformationRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = BankInformation::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (BankInformation $item) => (new BankInformationList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'bankInformation'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $items = BankInformation::filter($request->only(['search', 'status']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (BankInformation $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Bank information retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): BankInformation
+    public function show(string $uuid): JsonResponse
     {
-        return BankInformation::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new BankInformationView($item))->resolve(),
+            'message' => 'Bank information retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): BankInformation
+    public function store(StoreBankInformationRequest $request): JsonResponse
     {
-        return BankInformation::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = BankInformation::create([
             'bank_code' => $data['bankCode'],
             'bank_name' => $data['bankName'],
             'bank_address' => $data['bankAddress'],
             'account_number' => $data['accountNumber'],
             'status' => $data['status'] ?? true,
+            'iban' => $data['iban'] ?? null,
+            'swift_code' => $data['swiftCode'] ?? null,
+            'ifsc_code' => $data['ifscCode'] ?? null,
+            'routing_number' => $data['routingNumber'] ?? null,
+            'sort_code' => $data['sortCode'] ?? null,
+            'branch_name' => $data['branchName'] ?? null,
         ]);
+
+        return response()->json([
+            'data' => (new BankInformationView($item))->resolve(),
+            'message' => 'Bank information created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): BankInformation
+    public function update(string $uuid, UpdateBankInformationRequest $request): JsonResponse
     {
-        $bankInformation = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $bankInformation = $this->findByUuid($uuid);
 
         $bankInformation->fill([
             'bank_code' => $data['bankCode'] ?? $bankInformation->bank_code,
@@ -48,33 +77,34 @@ class BankInformationRepository
             'bank_address' => $data['bankAddress'] ?? $bankInformation->bank_address,
             'account_number' => $data['accountNumber'] ?? $bankInformation->account_number,
             'status' => array_key_exists('status', $data) ? $data['status'] : $bankInformation->status,
+            'iban' => $data['iban'] ?? $bankInformation->iban,
+            'swift_code' => $data['swiftCode'] ?? $bankInformation->swift_code,
+            'ifsc_code' => $data['ifscCode'] ?? $bankInformation->ifsc_code,
+            'routing_number' => $data['routingNumber'] ?? $bankInformation->routing_number,
+            'sort_code' => $data['sortCode'] ?? $bankInformation->sort_code,
+            'branch_name' => $data['branchName'] ?? $bankInformation->branch_name,
         ]);
         $bankInformation->save();
 
-        return $bankInformation->fresh();
+        return response()->json([
+            'data' => (new BankInformationView($bankInformation->fresh()))->resolve(),
+            'message' => 'Bank information updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Bank information deleted successfully.']);
     }
 
-    public function toResource(BankInformation $bankInformation): array
+    protected function findByUuid(string $uuid): BankInformation
     {
-        return [
-            'id' => $bankInformation->id,
-            'uuid' => $bankInformation->uuid,
-            'bankCode' => $bankInformation->bank_code,
-            'bankName' => $bankInformation->bank_name,
-            'bankAddress' => $bankInformation->bank_address,
-            'accountNumber' => $bankInformation->account_number,
-            'status' => (bool) $bankInformation->status,
-            'createdAt' => $bankInformation->created_at?->toISOString(),
-            'updatedAt' => $bankInformation->updated_at?->toISOString(),
-        ];
+        return BankInformation::where('uuid', $uuid)->firstOrFail();
     }
 
-    public function toSelectOption(BankInformation $bankInformation): array
+    protected function toSelectOption(BankInformation $bankInformation): array
     {
         return [
             'id' => $bankInformation->id,
@@ -82,25 +112,6 @@ class BankInformationRepository
             'bankName' => $bankInformation->bank_name,
             'bankCode' => $bankInformation->bank_code,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = BankInformation::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $query) use ($search) {
-                $query->where('bank_code', 'like', "%{$search}%")
-                    ->orWhere('bank_name', 'like', "%{$search}%")
-                    ->orWhere('account_number', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

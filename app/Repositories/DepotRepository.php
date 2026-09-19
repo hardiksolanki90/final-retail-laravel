@@ -2,38 +2,55 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreDepotRequest;
+use App\Http\Requests\UpdateDepotRequest;
+use App\Http\Resources\DepotList;
+use App\Http\Resources\DepotView;
 use App\Models\Depot;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DepotRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = Depot::filter($request->only(['search', 'region_id', 'area_id', 'status']))
+            ->with(['region', 'area'])
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Depot $item) => (new DepotList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'depots'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $items = Depot::filter($request->only(['search', 'region_id', 'area_id', 'status']))
             ->with(['region', 'area', 'user'])
             ->orderBy('id')
             ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Depot $item) => (new DepotView($item))->resolve())->values(),
+            'message' => 'Depots retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Depot
+    public function show(string $uuid): JsonResponse
     {
-        return Depot::with(['region', 'area', 'user'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new DepotView($item))->resolve(),
+            'message' => 'Depot retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): Depot
+    public function store(StoreDepotRequest $request): JsonResponse
     {
-        return Depot::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = Depot::create([
             'user_id' => $data['userId'] ?? null,
             'region_id' => $data['regionId'],
             'area_id' => $data['areaId'] ?? null,
@@ -43,11 +60,17 @@ class DepotRepository
             'depot_manager_contact' => $data['depotManagerContact'] ?? null,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => (new DepotView($item->fresh(['region', 'area', 'user'])))->resolve(),
+            'message' => 'Depot created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Depot
+    public function update(string $uuid, UpdateDepotRequest $request): JsonResponse
     {
-        $depot = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $depot = $this->findByUuid($uuid);
 
         $depot->fill([
             'user_id' => array_key_exists('userId', $data) ? $data['userId'] : $depot->user_id,
@@ -61,39 +84,27 @@ class DepotRepository
         ]);
         $depot->save();
 
-        return $depot->fresh(['region', 'area', 'user']);
+        return response()->json([
+            'data' => (new DepotView($depot->fresh(['region', 'area', 'user'])))->resolve(),
+            'message' => 'Depot updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Depot deleted successfully.']);
     }
 
-    public function toResource(Depot $depot): array
+    protected function findByUuid(string $uuid): Depot
     {
-        return [
-            'id' => $depot->id,
-            'uuid' => $depot->uuid,
-            'userId' => $depot->user_id,
-            'regionId' => $depot->region_id,
-            'areaId' => $depot->area_id,
-            'depotCode' => $depot->depot_code,
-            'depotName' => $depot->depot_name,
-            'depotManager' => $depot->depot_manager,
-            'depotManagerContact' => $depot->depot_manager_contact,
-            'status' => (bool) $depot->status,
-            'createdAt' => $depot->created_at?->toISOString(),
-            'updatedAt' => $depot->updated_at?->toISOString(),
-            'region' => $depot->relationLoaded('region') && $depot->region
-                ? ['id' => $depot->region->id, 'uuid' => $depot->region->uuid, 'name' => $depot->region->region_name]
-                : null,
-            'area' => $depot->relationLoaded('area') && $depot->area
-                ? ['id' => $depot->area->id, 'uuid' => $depot->area->uuid, 'name' => $depot->area->area_name]
-                : null,
-        ];
+        return Depot::with(['region', 'area', 'user'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
     }
 
-    public function toSelectOption(Depot $depot): array
+    protected function toSelectOption(Depot $depot): array
     {
         return [
             'id' => $depot->id,
@@ -101,33 +112,6 @@ class DepotRepository
             'depotCode' => $depot->depot_code,
             'depotName' => $depot->depot_name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Depot::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('depot_code', 'like', "%{$search}%")
-                    ->orWhere('depot_name', 'like', "%{$search}%")
-                    ->orWhere('depot_manager', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['region_id'])) {
-            $query->where('region_id', $filters['region_id']);
-        }
-
-        if (! empty($filters['area_id'])) {
-            $query->where('area_id', $filters['area_id']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

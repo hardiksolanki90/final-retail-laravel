@@ -2,47 +2,71 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkDeliveryActionRequest;
+use App\Http\Requests\StoreDeliveryRequest;
+use App\Http\Requests\UpdateDeliveryRequest;
 use App\Models\Delivery;
 use App\Models\DeliveryDetail;
 use App\Repositories\Concerns\ResolvesDocumentRelations;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DeliveryRepository
 {
     use ResolvesDocumentRelations;
 
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = Delivery::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Delivery $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'deliveries'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function search(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->get();
+        return $this->list($request);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Delivery
+    public function all(Request $request): JsonResponse
     {
-        return Delivery::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'order'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $items = Delivery::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Delivery $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Deliveries retrieved successfully.',
+        ], 200);
     }
 
-    public function create(array $data, int $organisationId, ?int $userId = null): Delivery
+    public function show(string $uuid): JsonResponse
     {
-        return DB::transaction(function () use ($data, $organisationId, $userId) {
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $delivery = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($delivery),
+            'message' => 'Delivery retrieved successfully.',
+        ], 200);
+    }
+
+    public function store(StoreDeliveryRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $delivery = DB::transaction(function () use ($data, $request) {
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $delivery = Delivery::create(array_merge(
-                $this->headerAttributes($data, $organisationId, $userId),
+                $this->headerAttributes($data, $request->user()->id),
                 $totals,
             ));
 
@@ -52,20 +76,25 @@ class DeliveryRepository
 
             return $delivery->load(['details.item', 'customer', 'salesman', 'paymentTerm', 'order']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($delivery),
+            'message' => 'Delivery created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Delivery
+    public function update(string $uuid, UpdateDeliveryRequest $request): JsonResponse
     {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $delivery = Delivery::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $data = $request->validated();
 
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $delivery = DB::transaction(function () use ($uuid, $data) {
+            $delivery = Delivery::where('uuid', $uuid)->firstOrFail();
+
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $delivery->fill(array_merge(
-                $this->headerAttributes($data, $organisationId, null, $delivery),
+                $this->headerAttributes($data, null, $delivery),
                 $totals,
             ))->save();
 
@@ -73,25 +102,33 @@ class DeliveryRepository
 
             return $delivery->fresh(['details.item', 'customer', 'salesman', 'paymentTerm', 'order']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($delivery),
+            'message' => 'Delivery updated successfully.',
+        ], 200);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function delete(Request $request): JsonResponse
     {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $delivery = Delivery::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $request->validate(['id' => ['required', 'string']]);
+        $uuid = (string) $request->input('id');
+
+        DB::transaction(function () use ($uuid) {
+            $delivery = Delivery::where('uuid', $uuid)->firstOrFail();
 
             $delivery->details()->delete();
             $delivery->delete();
         });
+
+        return response()->json(['message' => 'Delivery deleted successfully.'], 200);
     }
 
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
+    public function bulkAction(BulkDeliveryActionRequest $request): JsonResponse
     {
-        $query = Delivery::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
+        $query = Delivery::whereIn('uuid', $request->validated('uuids'));
 
-        match ($action) {
+        match ($request->validated('action')) {
             'activate' => $query->update(['status' => true]),
             'deactivate' => $query->update(['status' => false]),
             'delete' => $query->get()->each(function (Delivery $delivery) {
@@ -99,9 +136,38 @@ class DeliveryRepository
                 $delivery->delete();
             }),
         };
+
+        return response()->json(['message' => 'Bulk action completed successfully.'], 200);
     }
 
-    public function toResource(Delivery $delivery): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function resolvedFilters(Request $request): array
+    {
+        $organisationId = (int) Auth::user()->organisation_id;
+
+        $filters = $request->only(['search', 'customer_id', 'salesman_id', 'current_stage', 'status', 'date_from', 'date_to']);
+
+        if (! empty($filters['customer_id'])) {
+            $filters['customer_id'] = $this->resolveCustomerId($filters['customer_id'], $organisationId);
+        }
+
+        if (! empty($filters['salesman_id'])) {
+            $filters['salesman_id'] = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
+        }
+
+        return $filters;
+    }
+
+    protected function findByUuid(string $uuid): Delivery
+    {
+        return Delivery::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'order'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(Delivery $delivery): array
     {
         return [
             'id' => $delivery->id,
@@ -131,12 +197,10 @@ class DeliveryRepository
             'items' => $delivery->relationLoaded('details')
                 ? $delivery->details->map(fn (DeliveryDetail $d) => $this->detailResource($d))->values()->all()
                 : [],
-            'createdAt' => $delivery->created_at?->toISOString(),
-            'updatedAt' => $delivery->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(Delivery $delivery): array
+    protected function toSelectOption(Delivery $delivery): array
     {
         return [
             'value' => $delivery->uuid,
@@ -144,58 +208,14 @@ class DeliveryRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Delivery::with(['customer', 'salesman'])
-            ->where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('delivery_number', 'like', "%{$search}%")
-                    ->orWhere('invoice_number', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['customer_id'])) {
-            $customerId = $this->resolveCustomerId($filters['customer_id'], $organisationId);
-            if ($customerId) {
-                $query->where('customer_id', $customerId);
-            }
-        }
-
-        if (! empty($filters['salesman_id'])) {
-            $salesmanId = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
-            if ($salesmanId) {
-                $query->where('salesman_id', $salesmanId);
-            }
-        }
-
-        if (! empty($filters['current_stage'])) {
-            $query->where('current_stage', $filters['current_stage']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('delivery_date', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('delivery_date', '<=', $filters['date_to']);
-        }
-
-        return $query;
-    }
-
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function headerAttributes(array $data, int $organisationId, ?int $userId = null, ?Delivery $existing = null): array
+    protected function headerAttributes(array $data, ?int $userId = null, ?Delivery $existing = null): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $today = Carbon::today()->toDateString();
         $deliveryNumber = $data['deliveryNumber'] ?? $existing?->delivery_number;
         if ($deliveryNumber === null || $deliveryNumber === '') {
@@ -206,7 +226,6 @@ class DeliveryRepository
         $dueDate = $data['dueDate'] ?? $data['deliveryDueDate'] ?? $existing?->delivery_due_date?->toDateString() ?? $deliveryDate;
 
         $attrs = [
-            'organisation_id' => $organisationId,
             'order_id' => $this->resolveOrderId($data['orderId'] ?? null, $organisationId),
             'customer_id' => $this->resolveCustomerId($data['customerId'] ?? null, $organisationId),
             'salesman_id' => $this->resolveSalesmanId($data['salesmanId'] ?? null, $organisationId),
@@ -244,8 +263,10 @@ class DeliveryRepository
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    protected function mapLines(array $items, int $organisationId): array
+    protected function mapLines(array $items): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $lines = [];
 
         foreach ($items as $item) {

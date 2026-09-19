@@ -2,38 +2,57 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StorePaymentTermRequest;
+use App\Http\Requests\UpdatePaymentTermRequest;
+use App\Http\Resources\PaymentTermList;
+use App\Http\Resources\PaymentTermView;
 use App\Models\PaymentTerm;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class PaymentTermRepository
 {
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = PaymentTerm::filter($request->only(['search', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (PaymentTerm $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'paymentTerms'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): PaymentTerm
+    public function show(string $uuid): JsonResponse
     {
-        return PaymentTerm::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new PaymentTermView($item))->resolve(),
+            'message' => 'Payment term retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): PaymentTerm
+    public function store(StorePaymentTermRequest $request): JsonResponse
     {
-        return PaymentTerm::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = PaymentTerm::create([
             'name' => $data['name'] ?? '',
             'payment_code' => $data['paymentCode'] ?? $data['code'] ?? null,
             'number_of_days' => $data['numberOfDays'] ?? 0,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => (new PaymentTermView($item))->resolve(),
+            'message' => 'Payment term created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): PaymentTerm
+    public function update(string $uuid, UpdatePaymentTermRequest $request): JsonResponse
     {
-        $paymentTerm = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $paymentTerm = $this->findByUuid($uuid);
 
         $paymentTerm->fill([
             'name' => $data['name'] ?? $paymentTerm->name,
@@ -43,29 +62,27 @@ class PaymentTermRepository
         ]);
         $paymentTerm->save();
 
-        return $paymentTerm->fresh();
+        return response()->json([
+            'data' => (new PaymentTermView($paymentTerm->fresh()))->resolve(),
+            'message' => 'Payment term updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Payment term deleted successfully.']);
     }
 
-    public function toResource(PaymentTerm $paymentTerm): array
+    protected function findByUuid(string $uuid): PaymentTerm
     {
-        return [
-            'id' => $paymentTerm->id,
-            'uuid' => $paymentTerm->uuid,
-            'name' => $paymentTerm->name,
-            'paymentCode' => $paymentTerm->payment_code,
-            'numberOfDays' => $paymentTerm->number_of_days,
-            'status' => (bool) $paymentTerm->status,
-            'createdAt' => $paymentTerm->created_at?->toISOString(),
-            'updatedAt' => $paymentTerm->updated_at?->toISOString(),
-        ];
+        return PaymentTerm::where('uuid', $uuid)->firstOrFail();
     }
 
-    public function toSelectOption(PaymentTerm $paymentTerm): array
+    protected function toSelectOption(PaymentTerm $paymentTerm): array
     {
         return [
             'id' => $paymentTerm->id,
@@ -73,24 +90,6 @@ class PaymentTermRepository
             'name' => $paymentTerm->name,
             'numberOfDays' => $paymentTerm->number_of_days,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = PaymentTerm::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('payment_code', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

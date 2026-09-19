@@ -8,60 +8,49 @@ use App\Http\Requests\UpdateCustomerCategoryRequest;
 use App\Repositories\CustomerCategoryRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class CustomerCategoryController extends Controller
+class CustomerCategoryController extends Controller implements HasMiddleware
 {
-    public function __construct(protected CustomerCategoryRepository $customerCategories) {}
+    protected $repository;
+
+    public function __construct(CustomerCategoryRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('customer-category');
+    }
+
+    public function list(Request $request): JsonResponse
+    {
+        return $this->repository->list($request);
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->customerCategories->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->customerCategories->toSelectOption($item))->values(),
-            'message' => 'Customer categories retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->customerCategories->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerCategories->toResource($item),
-            'message' => 'Customer category retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreCustomerCategoryRequest $request): JsonResponse
     {
-        $item = $this->customerCategories->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerCategories->toResource($item),
-            'message' => 'Customer category created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateCustomerCategoryRequest $request): JsonResponse
     {
-        $item = $this->customerCategories->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerCategories->toResource($item),
-            'message' => 'Customer category updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
-    public function destroy(Request $request): JsonResponse
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->customerCategories->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Customer category deleted successfully.']);
+        return $this->repository->destroyByUuid($uuid);
     }
 }

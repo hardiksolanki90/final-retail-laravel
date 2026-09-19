@@ -10,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -49,7 +51,14 @@ use Illuminate\Support\Str;
 ])]
 class Item extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    // item_category_id and is_new_launch are deliberately absent from
+    // $filterable: their filter keys don't match the underlying columns
+    // (item_major_category_id, new_lunch), which Filterable::scopeFilter's
+    // generic pass-through can't remap — ItemRepository applies both manually.
+    protected array $searchable = ['item_code', 'item_name', 'erp_code', 'item_barcode'];
+    protected array $filterable = ['brand_id', 'status'];
 
     protected function casts(): array
     {
@@ -83,6 +92,26 @@ class Item extends Model
     public function organisation(): BelongsTo
     {
         return $this->belongsTo(Organisation::class);
+    }
+
+    public function itemMajorCategory(): BelongsTo
+    {
+        return $this->belongsTo(ItemCategory::class, 'item_major_category_id');
+    }
+
+    public function itemGroup(): BelongsTo
+    {
+        return $this->belongsTo(ItemGroup::class);
+    }
+
+    public function brand(): BelongsTo
+    {
+        return $this->belongsTo(Brand::class);
+    }
+
+    public function itemUomLowerUnit(): BelongsTo
+    {
+        return $this->belongsTo(ItemUom::class, 'lower_unit_uom_id');
     }
 
     public function mainPrices(): HasMany

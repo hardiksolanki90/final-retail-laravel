@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid', 'organisation_id', 'customer_id', 'depot_id', 'order_type_id', 'salesman_id',
@@ -24,7 +26,11 @@ use Illuminate\Support\Str;
 ])]
 class Order extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['order_number', 'erp_number'];
+    protected array $filterable = ['customer_id', 'salesman_id', 'current_stage', 'status'];
+    protected string $dateRangeColumn = 'order_date';
 
     protected function casts(): array
     {

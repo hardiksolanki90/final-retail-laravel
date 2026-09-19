@@ -6,18 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Repositories\CurrencyMasterRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class CurrencyMasterController extends Controller
+class CurrencyMasterController extends Controller implements HasMiddleware
 {
-    public function __construct(protected CurrencyMasterRepository $currencyMasters) {}
+    protected $repository;
+
+    public function __construct(CurrencyMasterRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('currency-master');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->currencyMasters->all();
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->currencyMasters->toSelectOption($item))->values(),
-            'message' => 'Currency masters retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 }

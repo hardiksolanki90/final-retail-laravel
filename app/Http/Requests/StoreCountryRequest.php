@@ -14,12 +14,7 @@ class StoreCountryRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'name' => ['required', 'string', 'max:191'],
-            'countryCode' => ['required', 'string', 'max:10'],
-            'dialCode' => ['nullable', 'string', 'max:10'],
-            'currency' => ['required', 'string', 'max:50'],
-            'currencyCode' => ['nullable', 'string', 'max:10'],
-            'currencySymbol' => ['required', 'string', 'max:50'],
+            'countryMasterId' => ['required', 'integer', 'exists:country_masters,id'],
             'status' => ['nullable', 'boolean'],
         ];
     }

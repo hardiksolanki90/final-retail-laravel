@@ -8,60 +8,44 @@ use App\Http\Requests\UpdateChannelRequest;
 use App\Repositories\ChannelRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class ChannelController extends Controller
+class ChannelController extends Controller implements HasMiddleware
 {
-    public function __construct(protected ChannelRepository $channels) {}
+    protected $repository;
+
+    public function __construct(ChannelRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('channel');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->channels->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->channels->toSelectOption($item))->values(),
-            'message' => 'Channels retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->channels->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->channels->toResource($item),
-            'message' => 'Channel retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreChannelRequest $request): JsonResponse
     {
-        $item = $this->channels->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->channels->toResource($item),
-            'message' => 'Channel created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateChannelRequest $request): JsonResponse
     {
-        $item = $this->channels->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->channels->toResource($item),
-            'message' => 'Channel updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->channels->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Channel deleted successfully.']);
+        return $this->repository->destroy($request);
     }
 }

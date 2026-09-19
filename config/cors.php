@@ -19,9 +19,9 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://app.retail.test')),
+    'allowed_origins' => explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:10001,http://retail-chain.test:10001,http://retail-chain.test,http://api.retail-chain.test,http://api.retail.test,http://retail.test:10001')),
 
-    'allowed_origins_patterns' => [],
+    'allowed_origins_patterns' => ['*.retail-chain.test:*', '*.retail.test:*'],
 
     'allowed_headers' => ['*'],
 

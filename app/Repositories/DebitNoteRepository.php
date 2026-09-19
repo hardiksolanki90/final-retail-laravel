@@ -2,47 +2,71 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkDebitNoteActionRequest;
+use App\Http\Requests\StoreDebitNoteRequest;
+use App\Http\Requests\UpdateDebitNoteRequest;
 use App\Models\DebitNote;
 use App\Models\DebitNoteDetail;
 use App\Repositories\Concerns\ResolvesDocumentRelations;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DebitNoteRepository
 {
     use ResolvesDocumentRelations;
 
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = DebitNote::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (DebitNote $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'debitNotes'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function search(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->get();
+        return $this->list($request);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): DebitNote
+    public function all(Request $request): JsonResponse
     {
-        return DebitNote::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'invoice'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $items = DebitNote::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (DebitNote $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Debit notes retrieved successfully.',
+        ], 200);
     }
 
-    public function create(array $data, int $organisationId, ?int $userId = null): DebitNote
+    public function show(string $uuid): JsonResponse
     {
-        return DB::transaction(function () use ($data, $organisationId, $userId) {
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $debitNote = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($debitNote),
+            'message' => 'Debit note retrieved successfully.',
+        ], 200);
+    }
+
+    public function store(StoreDebitNoteRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $debitNote = DB::transaction(function () use ($data, $request) {
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $debitNote = DebitNote::create(array_merge(
-                $this->headerAttributes($data, $organisationId, $userId),
+                $this->headerAttributes($data, $request->user()->id),
                 $totals,
             ));
 
@@ -52,20 +76,25 @@ class DebitNoteRepository
 
             return $debitNote->load(['details.item', 'customer', 'salesman', 'paymentTerm', 'invoice']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($debitNote),
+            'message' => 'Debit note created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): DebitNote
+    public function update(string $uuid, UpdateDebitNoteRequest $request): JsonResponse
     {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $debitNote = DebitNote::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $data = $request->validated();
 
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $debitNote = DB::transaction(function () use ($uuid, $data) {
+            $debitNote = DebitNote::where('uuid', $uuid)->firstOrFail();
+
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $debitNote->fill(array_merge(
-                $this->headerAttributes($data, $organisationId, null, $debitNote),
+                $this->headerAttributes($data, null, $debitNote),
                 $totals,
             ))->save();
 
@@ -73,25 +102,33 @@ class DebitNoteRepository
 
             return $debitNote->fresh(['details.item', 'customer', 'salesman', 'paymentTerm', 'invoice']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($debitNote),
+            'message' => 'Debit note updated successfully.',
+        ], 200);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function delete(Request $request): JsonResponse
     {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $debitNote = DebitNote::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $request->validate(['id' => ['required', 'string']]);
+        $uuid = (string) $request->input('id');
+
+        DB::transaction(function () use ($uuid) {
+            $debitNote = DebitNote::where('uuid', $uuid)->firstOrFail();
 
             $debitNote->details()->delete();
             $debitNote->delete();
         });
+
+        return response()->json(['message' => 'Debit note deleted successfully.'], 200);
     }
 
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
+    public function bulkAction(BulkDebitNoteActionRequest $request): JsonResponse
     {
-        $query = DebitNote::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
+        $query = DebitNote::whereIn('uuid', $request->validated('uuids'));
 
-        match ($action) {
+        match ($request->validated('action')) {
             'activate' => $query->update(['status' => true]),
             'deactivate' => $query->update(['status' => false]),
             'delete' => $query->get()->each(function (DebitNote $debitNote) {
@@ -99,9 +136,38 @@ class DebitNoteRepository
                 $debitNote->delete();
             }),
         };
+
+        return response()->json(['message' => 'Bulk action completed successfully.'], 200);
     }
 
-    public function toResource(DebitNote $debitNote): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function resolvedFilters(Request $request): array
+    {
+        $organisationId = (int) Auth::user()->organisation_id;
+
+        $filters = $request->only(['search', 'customer_id', 'salesman_id', 'status', 'date_from', 'date_to']);
+
+        if (! empty($filters['customer_id'])) {
+            $filters['customer_id'] = $this->resolveCustomerId($filters['customer_id'], $organisationId);
+        }
+
+        if (! empty($filters['salesman_id'])) {
+            $filters['salesman_id'] = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
+        }
+
+        return $filters;
+    }
+
+    protected function findByUuid(string $uuid): DebitNote
+    {
+        return DebitNote::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'invoice'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(DebitNote $debitNote): array
     {
         return [
             'id' => $debitNote->id,
@@ -129,12 +195,10 @@ class DebitNoteRepository
             'items' => $debitNote->relationLoaded('details')
                 ? $debitNote->details->map(fn (DebitNoteDetail $d) => $this->detailResource($d))->values()->all()
                 : [],
-            'createdAt' => $debitNote->created_at?->toISOString(),
-            'updatedAt' => $debitNote->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(DebitNote $debitNote): array
+    protected function toSelectOption(DebitNote $debitNote): array
     {
         return [
             'value' => $debitNote->uuid,
@@ -142,54 +206,14 @@ class DebitNoteRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = DebitNote::with(['customer', 'salesman'])
-            ->where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('debit_note_number', 'like', "%{$search}%")
-                    ->orWhere('reason', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['customer_id'])) {
-            $customerId = $this->resolveCustomerId($filters['customer_id'], $organisationId);
-            if ($customerId) {
-                $query->where('customer_id', $customerId);
-            }
-        }
-
-        if (! empty($filters['salesman_id'])) {
-            $salesmanId = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
-            if ($salesmanId) {
-                $query->where('salesman_id', $salesmanId);
-            }
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('debit_note_date', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('debit_note_date', '<=', $filters['date_to']);
-        }
-
-        return $query;
-    }
-
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function headerAttributes(array $data, int $organisationId, ?int $userId = null, ?DebitNote $existing = null): array
+    protected function headerAttributes(array $data, ?int $userId = null, ?DebitNote $existing = null): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $today = Carbon::today()->toDateString();
         $debitNoteNumber = $data['debitNoteNumber'] ?? $existing?->debit_note_number;
         if ($debitNoteNumber === null || $debitNoteNumber === '') {
@@ -197,7 +221,6 @@ class DebitNoteRepository
         }
 
         $attrs = [
-            'organisation_id' => $organisationId,
             'customer_id' => $this->resolveCustomerId($data['customerId'] ?? null, $organisationId),
             'salesman_id' => $this->resolveSalesmanId($data['salesmanId'] ?? null, $organisationId),
             'invoice_id' => $this->resolveInvoiceId($data['invoiceId'] ?? null, $organisationId),
@@ -227,8 +250,10 @@ class DebitNoteRepository
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    protected function mapLines(array $items, int $organisationId): array
+    protected function mapLines(array $items): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $lines = [];
 
         foreach ($items as $item) {

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
@@ -60,6 +61,21 @@ class Organisation extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class, 'org_country_id');
+    }
+
+    /**
+     * @return array{taxSystem: ?string, taxEngine: ?string, taxName: ?string, defaultRate: ?string, components: array, registrationNumberLabel: ?string, jurisdictionLevel: array, taxStatus: ?string, calculationNotes: ?string}|null
+     */
+    public function resolveTaxProfile(): ?array
+    {
+        $countryMaster = $this->country?->countryMaster;
+
+        return $countryMaster?->tax_system ? $countryMaster->toTaxProfileResource() : null;
     }
 
     public function salesmen(): HasMany

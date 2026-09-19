@@ -3,24 +3,33 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreVanCategoryRequest;
 use App\Repositories\VanCategoryRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class VanCategoryController extends Controller
+class VanCategoryController extends Controller implements HasMiddleware
 {
-    public function __construct(protected VanCategoryRepository $vanCategories) {}
+    protected $repository;
+
+    public function __construct(VanCategoryRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('van-category');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->vanCategories->all(
-            $request->only(['status']),
-            $request->user()->organisation_id,
-        );
+        return $this->repository->all($request);
+    }
 
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->vanCategories->toSelectOption($item))->values(),
-            'message' => 'Van categories retrieved successfully.',
-        ]);
+    public function store(StoreVanCategoryRequest $request): JsonResponse
+    {
+        return $this->repository->store($request);
     }
 }

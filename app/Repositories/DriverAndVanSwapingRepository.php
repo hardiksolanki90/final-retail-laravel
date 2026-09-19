@@ -2,54 +2,73 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreDriverAndVanSwapingRequest;
+use App\Http\Requests\UpdateDriverAndVanSwapingRequest;
 use App\Models\DriverAndVanSwaping;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DriverAndVanSwapingRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = DriverAndVanSwaping::filter($request->only(['old_salesman_id', 'new_salesman_id', 'reason_id']))
             ->with(['newSalesman', 'oldSalesman', 'oldVan', 'newVan', 'reason'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (DriverAndVanSwaping $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'driverReplacements'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $items = DriverAndVanSwaping::filter($request->only(['old_salesman_id', 'new_salesman_id', 'reason_id']))
             ->with(['newSalesman', 'oldSalesman', 'oldVan', 'newVan', 'reason'])
             ->orderBy('id')
             ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (DriverAndVanSwaping $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Driver and van swapings retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): DriverAndVanSwaping
+    public function show(string $uuid): JsonResponse
     {
-        return DriverAndVanSwaping::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Driver and van swaping retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId, int $loginUserId): DriverAndVanSwaping
+    public function store(StoreDriverAndVanSwapingRequest $request): JsonResponse
     {
-        return DriverAndVanSwaping::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = DriverAndVanSwaping::create([
             'order_id' => $data['orderId'] ?? null,
             'new_salesman_id' => $data['newSalesmanId'] ?? null,
             'old_salesman_id' => $data['oldSalesmanId'] ?? null,
             'old_van_id' => $data['oldVanId'] ?? null,
             'new_van_id' => $data['newVanId'] ?? null,
-            'login_user_id' => $loginUserId,
+            'login_user_id' => $request->user()->id,
             'reason_id' => $data['reasonId'] ?? null,
             'date' => $data['date'],
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Driver and van swaping created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): DriverAndVanSwaping
+    public function update(string $uuid, UpdateDriverAndVanSwapingRequest $request): JsonResponse
     {
-        $item = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $item = $this->findByUuid($uuid);
 
         $item->fill([
             'order_id' => array_key_exists('orderId', $data) ? $data['orderId'] : $item->order_id,
@@ -62,15 +81,34 @@ class DriverAndVanSwapingRepository
         ]);
         $item->save();
 
-        return $item->fresh();
+        return response()->json([
+            'data' => $this->toResource($item->fresh()),
+            'message' => 'Driver and van swaping updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Driver and van swaping deleted successfully.']);
     }
 
-    public function toResource(DriverAndVanSwaping $item): array
+    public function destroyByUuid(string $uuid): JsonResponse
+    {
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Driver and van swaping deleted successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): DriverAndVanSwaping
+    {
+        return DriverAndVanSwaping::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(DriverAndVanSwaping $item): array
     {
         return [
             'id' => $item->id,
@@ -83,36 +121,15 @@ class DriverAndVanSwapingRepository
             'loginUserId' => $item->login_user_id,
             'reasonId' => $item->reason_id,
             'date' => $item->date?->toDateString(),
-            'createdAt' => $item->created_at?->toISOString(),
-            'updatedAt' => $item->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(DriverAndVanSwaping $item): array
+    protected function toSelectOption(DriverAndVanSwaping $item): array
     {
         return [
             'id' => $item->id,
             'uuid' => $item->uuid,
             'date' => $item->date?->toDateString(),
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = DriverAndVanSwaping::where('organisation_id', $organisationId);
-
-        if (! empty($filters['old_salesman_id'])) {
-            $query->where('old_salesman_id', $filters['old_salesman_id']);
-        }
-
-        if (! empty($filters['new_salesman_id'])) {
-            $query->where('new_salesman_id', $filters['new_salesman_id']);
-        }
-
-        if (! empty($filters['reason_id'])) {
-            $query->where('reason_id', $filters['reason_id']);
-        }
-
-        return $query;
     }
 }

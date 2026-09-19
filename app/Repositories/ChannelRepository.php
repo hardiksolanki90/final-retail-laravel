@@ -2,57 +2,72 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreChannelRequest;
+use App\Http\Requests\UpdateChannelRequest;
+use App\Http\Resources\ChannelList;
+use App\Http\Resources\ChannelView;
 use App\Models\Channel;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ChannelRepository
 {
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = Channel::filter($request->only(['search', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (Channel $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'channels'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Channel
+    public function show(string $uuid): JsonResponse
     {
-        return Channel::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new ChannelView($item))->resolve(),
+            'message' => 'Channel retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): Channel
+    public function store(StoreChannelRequest $request): JsonResponse
     {
+        $data = $request->validated();
+
         $parentId = $data['parentId'] ?? null;
         $nodeLevel = 0;
 
         if ($parentId) {
-            $parent = Channel::where('organisation_id', $organisationId)
-                ->where('id', $parentId)
-                ->first();
+            $parent = Channel::where('id', $parentId)->first();
             $nodeLevel = $parent ? $parent->node_level + 1 : 0;
         }
 
-        return Channel::create([
-            'organisation_id' => $organisationId,
+        $item = Channel::create([
             'parent_id' => $parentId,
             'name' => $data['channelName'] ?? $data['name'] ?? '',
             'node_level' => $data['nodeLevel'] ?? $nodeLevel,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => (new ChannelView($item))->resolve(),
+            'message' => 'Channel created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Channel
+    public function update(string $uuid, UpdateChannelRequest $request): JsonResponse
     {
-        $channel = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $channel = $this->findByUuid($uuid);
 
         $parentId = array_key_exists('parentId', $data) ? $data['parentId'] : $channel->parent_id;
         $nodeLevel = $channel->node_level;
 
         if (array_key_exists('parentId', $data)) {
             if ($parentId) {
-                $parent = Channel::where('organisation_id', $organisationId)
-                    ->where('id', $parentId)
-                    ->first();
+                $parent = Channel::where('id', $parentId)->first();
                 $nodeLevel = $parent ? $parent->node_level + 1 : 0;
             } else {
                 $nodeLevel = 0;
@@ -67,30 +82,27 @@ class ChannelRepository
         ]);
         $channel->save();
 
-        return $channel->fresh();
+        return response()->json([
+            'data' => (new ChannelView($channel->fresh()))->resolve(),
+            'message' => 'Channel updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Channel deleted successfully.']);
     }
 
-    public function toResource(Channel $channel): array
+    protected function findByUuid(string $uuid): Channel
     {
-        return [
-            'id' => $channel->id,
-            'uuid' => $channel->uuid,
-            'channelName' => $channel->name,
-            'name' => $channel->name,
-            'parentId' => $channel->parent_id,
-            'nodeLevel' => $channel->node_level,
-            'status' => (bool) $channel->status,
-            'createdAt' => $channel->created_at?->toISOString(),
-            'updatedAt' => $channel->updated_at?->toISOString(),
-        ];
+        return Channel::where('uuid', $uuid)->firstOrFail();
     }
 
-    public function toSelectOption(Channel $channel): array
+    protected function toSelectOption(Channel $channel): array
     {
         return [
             'id' => $channel->id,
@@ -98,21 +110,6 @@ class ChannelRepository
             'channelName' => $channel->name,
             'name' => $channel->name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Channel::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

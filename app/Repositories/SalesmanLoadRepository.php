@@ -2,13 +2,17 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkSalesmanLoadActionRequest;
+use App\Http\Requests\StoreSalesmanLoadRequest;
+use App\Http\Requests\UpdateSalesmanLoadRequest;
 use App\Models\SalesmanLoad;
 use App\Models\SalesmanLoadDetail;
 use App\Repositories\Concerns\ResolvesDocumentRelations;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -16,29 +20,105 @@ class SalesmanLoadRepository
 {
     use ResolvesDocumentRelations;
 
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $filters = $request->only(['search', 'salesman_id', 'status', 'date_from', 'date_to']);
+
+        $paginated = $this->baseQuery($filters)
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (SalesmanLoad $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'salesmanLoads'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->get();
+        $filters = $request->only(['search', 'salesman_id', 'status', 'date_from', 'date_to']);
+
+        $items = $this->baseQuery($filters)->orderByDesc('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (SalesmanLoad $load) => $this->toSelectOption($load))->values(),
+            'message' => 'Salesman loads retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): SalesmanLoad
+    public function show(string $uuid, Request $request): JsonResponse
+    {
+        $load = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($load),
+            'message' => 'Salesman load retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreSalesmanLoadRequest $request): JsonResponse
+    {
+        $load = $this->create($request->validated(), $request->user()->id);
+
+        return response()->json([
+            'data' => $this->toResource($load),
+            'message' => 'Salesman load created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateSalesmanLoadRequest $request): JsonResponse
+    {
+        $load = $this->performUpdate($uuid, $request->validated());
+
+        return response()->json([
+            'data' => $this->toResource($load),
+            'message' => 'Salesman load updated successfully.',
+        ]);
+    }
+
+    public function destroy(Request $request): JsonResponse
+    {
+        $request->validate(['id' => ['required', 'string']]);
+
+        DB::transaction(function () use ($request) {
+            $load = SalesmanLoad::where('uuid', (string) $request->input('id'))->firstOrFail();
+
+            $load->details()->delete();
+            $load->delete();
+        });
+
+        return response()->json(['message' => 'Salesman load deleted successfully.']);
+    }
+
+    public function bulkAction(BulkSalesmanLoadActionRequest $request): JsonResponse
+    {
+        $query = SalesmanLoad::whereIn('uuid', $request->validated('uuids'));
+
+        match ($request->validated('action')) {
+            'activate' => $query->update(['status' => true]),
+            'deactivate' => $query->update(['status' => false]),
+            'delete' => $query->get()->each(function (SalesmanLoad $load) {
+                $load->details()->delete();
+                $load->delete();
+            }),
+        };
+
+        return response()->json(['message' => 'Bulk action completed successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): SalesmanLoad
     {
         return SalesmanLoad::with(['details.item', 'salesman', 'van', 'warehouse', 'depot', 'route'])
-            ->where('organisation_id', $organisationId)
             ->where('uuid', $uuid)
             ->firstOrFail();
     }
 
-    public function create(array $data, int $organisationId, ?int $userId = null): SalesmanLoad
+    protected function create(array $data, ?int $userId = null): SalesmanLoad
     {
-        return DB::transaction(function () use ($data, $organisationId) {
+        return DB::transaction(function () use ($data) {
+            // ResolvesDocumentRelations (shared with repositories outside
+            // this migration) still needs an explicit organisation id to
+            // resolve related records and generate document numbers.
+            $organisationId = (int) Auth::user()->organisation_id;
+
             $header = $this->headerAttributes($data, $organisationId);
             $load = SalesmanLoad::create($header);
 
@@ -51,12 +131,15 @@ class SalesmanLoadRepository
         });
     }
 
-    public function update(string $uuid, array $data, int $organisationId): SalesmanLoad
+    protected function performUpdate(string $uuid, array $data): SalesmanLoad
     {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $load = SalesmanLoad::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        return DB::transaction(function () use ($uuid, $data) {
+            $load = SalesmanLoad::where('uuid', $uuid)->firstOrFail();
+
+            // ResolvesDocumentRelations (shared with repositories outside
+            // this migration) still needs an explicit organisation id to
+            // resolve related records and generate document numbers.
+            $organisationId = (int) Auth::user()->organisation_id;
 
             $header = $this->headerAttributes($data, $organisationId, $load);
             $load->fill($header)->save();
@@ -73,32 +156,6 @@ class SalesmanLoadRepository
 
             return $load->fresh(['details.item', 'salesman', 'van', 'warehouse', 'depot', 'route']);
         });
-    }
-
-    public function delete(string $uuid, int $organisationId): void
-    {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $load = SalesmanLoad::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
-
-            $load->details()->delete();
-            $load->delete();
-        });
-    }
-
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
-    {
-        $query = SalesmanLoad::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
-
-        match ($action) {
-            'activate' => $query->update(['status' => true]),
-            'deactivate' => $query->update(['status' => false]),
-            'delete' => $query->get()->each(function (SalesmanLoad $load) {
-                $load->details()->delete();
-                $load->delete();
-            }),
-        };
     }
 
     public function toResource(SalesmanLoad $load): array
@@ -124,8 +181,6 @@ class SalesmanLoadRepository
             'items' => $load->relationLoaded('details')
                 ? $load->details->map(fn (SalesmanLoadDetail $d) => $this->detailResource($d))->values()->all()
                 : [],
-            'createdAt' => $load->created_at?->toISOString(),
-            'updatedAt' => $load->updated_at?->toISOString(),
         ];
     }
 
@@ -137,15 +192,17 @@ class SalesmanLoadRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
+    /**
+     * Filterable::scopeFilter (via ::filter()) handles the search on
+     * load_number and the load_date date-range (date_from/date_to) from the
+     * model's $searchable / $dateRangeColumn. salesman_id and status are
+     * applied manually below — see the note on SalesmanLoad::$filterable.
+     */
+    protected function baseQuery(array $filters): Builder
     {
-        $query = SalesmanLoad::with(['salesman', 'van'])
-            ->where('organisation_id', $organisationId);
+        $organisationId = (int) Auth::user()->organisation_id;
 
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where('load_number', 'like', "%{$search}%");
-        }
+        $query = SalesmanLoad::with(['salesman', 'van'])->filter($filters);
 
         if (! empty($filters['salesman_id'])) {
             $salesmanId = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
@@ -161,14 +218,6 @@ class SalesmanLoadRepository
             } else {
                 $query->where('status', filter_var($status, FILTER_VALIDATE_BOOLEAN));
             }
-        }
-
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('load_date', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('load_date', '<=', $filters['date_to']);
         }
 
         return $query;
@@ -187,7 +236,6 @@ class SalesmanLoadRepository
         }
 
         $attrs = [
-            'organisation_id' => $organisationId,
             'load_number' => $loadNumber,
             'salesman_id' => $this->resolveSalesmanId($data['salesmanId'] ?? null, $organisationId),
             'van_id' => $this->resolveVanId($data['vanId'] ?? null, $organisationId),

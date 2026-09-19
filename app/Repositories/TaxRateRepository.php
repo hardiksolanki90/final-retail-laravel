@@ -2,57 +2,104 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreTaxRateRequest;
+use App\Http\Requests\UpdateTaxRateRequest;
+use App\Models\Organisation;
 use App\Models\TaxRate;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class TaxRateRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function types(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
-    }
+        $organisation = Organisation::find($request->user()->organisation_id);
+        $profile = $organisation?->resolveTaxProfile();
 
-    public function all(array $filters, int $organisationId): Collection
-    {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
-    }
-
-    public function findByUuid(string $uuid, int $organisationId): TaxRate
-    {
-        return TaxRate::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
-    }
-
-    public function create(array $data, int $organisationId): TaxRate
-    {
-        return TaxRate::create([
-            'organisation_id' => $organisationId,
-            'name' => $data['name'],
-            'rate' => $data['rate'],
-            'type' => $data['type'],
+        return response()->json([
+            'data' => $profile['components'] ?? [],
+            'message' => 'Tax types retrieved successfully.',
         ]);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): TaxRate
+    public function list(Request $request): JsonResponse
     {
-        $taxRate = $this->findByUuid($uuid, $organisationId);
+        $paginated = TaxRate::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn(TaxRate $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'taxRates'), 200);
+    }
+
+    public function all(Request $request): JsonResponse
+    {
+        $items = TaxRate::filter($request->only(['search', 'status']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn(TaxRate $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Tax rates retrieved successfully.',
+        ]);
+    }
+
+    public function show(string $uuid, Request $request): JsonResponse
+    {
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Tax rate retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreTaxRateRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $item = TaxRate::create([
+            'name' => $data['name'],
+            'rate' => $data['rate'],
+            'type' => $data['type'],
+            'description' => $data['description'] ?? null,
+        ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Tax rate created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateTaxRateRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $taxRate = $this->findByUuid($uuid);
 
         $taxRate->fill([
             'name' => $data['name'] ?? $taxRate->name,
             'rate' => $data['rate'] ?? $taxRate->rate,
             'type' => $data['type'] ?? $taxRate->type,
+            'description' => $data['description'] ?? $taxRate->description,
         ]);
         $taxRate->save();
 
-        return $taxRate->fresh();
+        return response()->json([
+            'data' => $this->toResource($taxRate->fresh()),
+            'message' => 'Tax rate updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Tax rate deleted successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): TaxRate
+    {
+        return TaxRate::where('uuid', $uuid)->firstOrFail();
     }
 
     public function toResource(TaxRate $taxRate): array
@@ -63,8 +110,7 @@ class TaxRateRepository
             'name' => $taxRate->name,
             'rate' => $taxRate->rate,
             'type' => $taxRate->type,
-            'createdAt' => $taxRate->created_at?->toISOString(),
-            'updatedAt' => $taxRate->updated_at?->toISOString(),
+            'description' => $taxRate->description,
         ];
     }
 
@@ -76,20 +122,5 @@ class TaxRateRepository
             'name' => $taxRate->name,
             'type' => $taxRate->type,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = TaxRate::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $query) use ($search) {
-                $query->where('name', 'like', "%{$search}%")
-                    ->orWhere('type', 'like', "%{$search}%");
-            });
-        }
-
-        return $query;
     }
 }

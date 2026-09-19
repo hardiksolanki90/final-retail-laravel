@@ -16,12 +16,14 @@ return new class extends Migration
         Schema::create('customer_categories', function (Blueprint $table) {
             $table->id();
             $table->uuid('uuid');
-            $table->foreignId('organisation_id')->nullable()->constrained('organisations');
-            $table->string('customer_category_code', 191)->comment('like CC01, CC02 etc.');
-            $table->foreignId('parent_id')->nullable()->constrained('customer_categories');
+            $table->unsignedBigInteger('organisation_id')->nullable();
+            $table->string('customer_category_code')->comment('like CC01, CC02 etc.');
+            $table->unsignedBigInteger('parent_id')->nullable();
             $table->bigInteger('node_level')->default(0);
-            $table->string('customer_category_name', 191)->comment('like agent, depo etc.');
-            $table->boolean('status')->default(true);
+            $table->string('customer_category_name')->comment('like agent, depo etc.');
+            $table->boolean('status')->default(1);
+            $table->foreign('organisation_id')->references('id')->on('organisations')->onDelete('cascade');
+            $table->foreign('parent_id')->references('id')->on('customer_categories')->onDelete('cascade');
             $table->timestamps();
             $table->softDeletes();
         });

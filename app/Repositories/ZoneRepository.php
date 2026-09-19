@@ -2,91 +2,101 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreZoneRequest;
+use App\Http\Requests\UpdateZoneRequest;
+use App\Http\Resources\ZoneList;
+use App\Http\Resources\ZoneView;
 use App\Models\Zone;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ZoneRepository
 {
-    public function list(array $filters, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters)->orderByDesc('id')->paginate($perPage);
+        $paginated = Zone::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Zone $item) => (new ZoneList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'zones'), 200);
     }
 
-    public function all(array $filters = []): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters)->orderBy('id')->get();
-    }
+        $items = Zone::filter($request->only(['search', 'status']))->orderBy('id')->get();
 
-    public function findByUuid(string $uuid): Zone
-    {
-        return Zone::where('uuid', $uuid)->firstOrFail();
-    }
-
-    public function create(array $data): Zone
-    {
-        return Zone::create([
-            'name' => $data['name'],
-            'no_truck' => $data['noTruck'],
-            'status' => $data['status'] ?? true,
+        return response()->json([
+            'data' => $items->map(fn (Zone $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Zones retrieved successfully.',
         ]);
     }
 
-    public function update(string $uuid, array $data): Zone
+    public function show(string $uuid): JsonResponse
     {
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new ZoneView($item))->resolve(),
+            'message' => 'Zone retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreZoneRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $item = Zone::create([
+            'zone_code' => $data['zoneCode'],
+            'name' => $data['name'],
+            'status' => $data['status'] ?? true,
+        ]);
+
+        return response()->json([
+            'data' => (new ZoneView($item))->resolve(),
+            'message' => 'Zone created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateZoneRequest $request): JsonResponse
+    {
+        $data = $request->validated();
         $zone = $this->findByUuid($uuid);
 
         $zone->fill([
+            'zone_code' => $data['zoneCode'] ?? $zone->zone_code,
             'name' => $data['name'] ?? $zone->name,
-            'no_truck' => $data['noTruck'] ?? $zone->no_truck,
             'status' => array_key_exists('status', $data) ? $data['status'] : $zone->status,
         ]);
         $zone->save();
 
-        return $zone->fresh();
+        return response()->json([
+            'data' => (new ZoneView($zone->fresh()))->resolve(),
+            'message' => 'Zone updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Zone deleted successfully.']);
     }
 
-    public function toResource(Zone $zone): array
+    protected function findByUuid(string $uuid): Zone
+    {
+        return Zone::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toSelectOption(Zone $zone): array
     {
         return [
             'id' => $zone->id,
             'uuid' => $zone->uuid,
             'name' => $zone->name,
-            'noTruck' => $zone->no_truck,
-            'status' => (bool) $zone->status,
-            'createdAt' => $zone->created_at?->toISOString(),
-            'updatedAt' => $zone->updated_at?->toISOString(),
         ];
-    }
-
-    public function toSelectOption(Zone $zone): array
-    {
-        return [
-            'id' => $zone->id,
-            'uuid' => $zone->uuid,
-            'name' => $zone->name,
-        ];
-    }
-
-    protected function filtered(array $filters): Builder
-    {
-        $query = Zone::query();
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where('name', 'like', "%{$search}%");
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

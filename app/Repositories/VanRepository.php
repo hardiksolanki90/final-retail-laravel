@@ -2,36 +2,50 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreVanRequest;
+use App\Http\Requests\UpdateVanRequest;
 use App\Models\Van;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class VanRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = Van::filter($this->filters($request))
+            ->with(['area', 'vanType', 'vanCategory'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Van $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'vans'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = Van::filter($this->filters($request))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (Van $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'vans'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Van
+    public function show(string $uuid): JsonResponse
     {
-        return Van::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Van retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): Van
+    public function store(StoreVanRequest $request): JsonResponse
     {
-        return Van::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = Van::create([
             'van_code' => $data['vanCode'] ?? '',
             'plate_number' => $data['plateNumber'] ?? '',
             'description' => $data['description'] ?? '',
@@ -42,11 +56,17 @@ class VanRepository
             'van_status' => $data['status'] ?? true,
             'reading' => $data['reading'] ?? 0,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Van created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Van
+    public function update(string $uuid, UpdateVanRequest $request): JsonResponse
     {
-        $van = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $van = $this->findByUuid($uuid);
 
         $van->fill([
             'van_code' => $data['vanCode'] ?? $van->van_code,
@@ -61,15 +81,45 @@ class VanRepository
         ]);
         $van->save();
 
-        return $van->fresh();
+        return response()->json([
+            'data' => $this->toResource($van->fresh(['area', 'vanType', 'vanCategory'])),
+            'message' => 'Van updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Van deleted successfully.']);
     }
 
-    public function toResource(Van $van): array
+    protected function findByUuid(string $uuid): Van
+    {
+        return Van::with(['area', 'vanType', 'vanCategory'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    /**
+     * Van's boolean column is `van_status`, not `status`, so the public
+     * `status` query param is remapped to the model's filterable key.
+     * Filterable::scopeFilter only auto-casts a literal `status` key to
+     * boolean, so the value is cast here before it reaches the trait.
+     */
+    protected function filters(Request $request): array
+    {
+        $filters = $request->only(['search', 'area_id', 'van_type_id', 'status']);
+
+        if (array_key_exists('status', $filters) && $filters['status'] !== null && $filters['status'] !== '') {
+            $filters['van_status'] = filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN);
+        }
+        unset($filters['status']);
+
+        return $filters;
+    }
+
+    protected function toResource(Van $van): array
     {
         return [
             'id' => $van->id,
@@ -83,12 +133,19 @@ class VanRepository
             'vanCategoryId' => $van->van_category_id,
             'status' => (bool) $van->van_status,
             'reading' => $van->reading,
-            'createdAt' => $van->created_at?->toISOString(),
-            'updatedAt' => $van->updated_at?->toISOString(),
+            'area' => $van->relationLoaded('area') && $van->area
+                ? ['id' => $van->area->id, 'uuid' => $van->area->uuid, 'name' => $van->area->area_name]
+                : null,
+            'vanType' => $van->relationLoaded('vanType') && $van->vanType
+                ? ['id' => $van->vanType->id, 'uuid' => $van->vanType->uuid, 'name' => $van->vanType->name]
+                : null,
+            'vanCategory' => $van->relationLoaded('vanCategory') && $van->vanCategory
+                ? ['id' => $van->vanCategory->id, 'uuid' => $van->vanCategory->uuid, 'name' => $van->vanCategory->name]
+                : null,
         ];
     }
 
-    public function toSelectOption(Van $van): array
+    protected function toSelectOption(Van $van): array
     {
         return [
             'id' => $van->id,
@@ -96,33 +153,5 @@ class VanRepository
             'vanCode' => $van->van_code,
             'plateNumber' => $van->plate_number,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Van::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('van_code', 'like', "%{$search}%")
-                    ->orWhere('plate_number', 'like', "%{$search}%")
-                    ->orWhere('description', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['area_id'])) {
-            $query->where('area_id', $filters['area_id']);
-        }
-
-        if (! empty($filters['van_type_id'])) {
-            $query->where('van_type_id', $filters['van_type_id']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('van_status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

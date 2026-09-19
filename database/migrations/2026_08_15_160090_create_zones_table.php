@@ -17,7 +17,6 @@ return new class extends Migration
             $table->id();
             $table->uuid('uuid');
             $table->string('name', 191);
-            $table->integer('no_truck');
             $table->boolean('status')->default(true);
             $table->timestamps();
         });

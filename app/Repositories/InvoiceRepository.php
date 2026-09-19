@@ -2,47 +2,71 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkInvoiceActionRequest;
+use App\Http\Requests\StoreInvoiceRequest;
+use App\Http\Requests\UpdateInvoiceRequest;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Repositories\Concerns\ResolvesDocumentRelations;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceRepository
 {
     use ResolvesDocumentRelations;
 
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = Invoice::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman', 'order'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Invoice $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'invoices'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function search(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->get();
+        return $this->list($request);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Invoice
+    public function all(Request $request): JsonResponse
     {
-        return Invoice::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'order', 'delivery'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $items = Invoice::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman', 'order'])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Invoice $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Invoices retrieved successfully.',
+        ], 200);
     }
 
-    public function create(array $data, int $organisationId, ?int $userId = null): Invoice
+    public function show(string $uuid): JsonResponse
     {
-        return DB::transaction(function () use ($data, $organisationId, $userId) {
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $invoice = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($invoice),
+            'message' => 'Invoice retrieved successfully.',
+        ], 200);
+    }
+
+    public function store(StoreInvoiceRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $invoice = DB::transaction(function () use ($data, $request) {
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $invoice = Invoice::create(array_merge(
-                $this->headerAttributes($data, $organisationId, $userId),
+                $this->headerAttributes($data, $request->user()->id),
                 $totals,
             ));
 
@@ -52,20 +76,25 @@ class InvoiceRepository
 
             return $invoice->load(['details.item', 'customer', 'salesman', 'paymentTerm', 'order', 'delivery']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($invoice),
+            'message' => 'Invoice created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Invoice
+    public function update(string $uuid, UpdateInvoiceRequest $request): JsonResponse
     {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $invoice = Invoice::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $data = $request->validated();
 
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $invoice = DB::transaction(function () use ($uuid, $data) {
+            $invoice = Invoice::where('uuid', $uuid)->firstOrFail();
+
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $invoice->fill(array_merge(
-                $this->headerAttributes($data, $organisationId, null, $invoice),
+                $this->headerAttributes($data, null, $invoice),
                 $totals,
             ))->save();
 
@@ -73,25 +102,33 @@ class InvoiceRepository
 
             return $invoice->fresh(['details.item', 'customer', 'salesman', 'paymentTerm', 'order', 'delivery']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($invoice),
+            'message' => 'Invoice updated successfully.',
+        ], 200);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function delete(Request $request): JsonResponse
     {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $invoice = Invoice::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $request->validate(['id' => ['required', 'string']]);
+        $uuid = (string) $request->input('id');
+
+        DB::transaction(function () use ($uuid) {
+            $invoice = Invoice::where('uuid', $uuid)->firstOrFail();
 
             $invoice->details()->delete();
             $invoice->delete();
         });
+
+        return response()->json(['message' => 'Invoice deleted successfully.'], 200);
     }
 
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
+    public function bulkAction(BulkInvoiceActionRequest $request): JsonResponse
     {
-        $query = Invoice::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
+        $query = Invoice::whereIn('uuid', $request->validated('uuids'));
 
-        match ($action) {
+        match ($request->validated('action')) {
             'activate' => $query->update(['status' => true]),
             'deactivate' => $query->update(['status' => false]),
             'delete' => $query->get()->each(function (Invoice $invoice) {
@@ -99,9 +136,38 @@ class InvoiceRepository
                 $invoice->delete();
             }),
         };
+
+        return response()->json(['message' => 'Bulk action completed successfully.'], 200);
     }
 
-    public function toResource(Invoice $invoice): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function resolvedFilters(Request $request): array
+    {
+        $organisationId = (int) Auth::user()->organisation_id;
+
+        $filters = $request->only(['search', 'customer_id', 'salesman_id', 'current_stage', 'status', 'date_from', 'date_to']);
+
+        if (! empty($filters['customer_id'])) {
+            $filters['customer_id'] = $this->resolveCustomerId($filters['customer_id'], $organisationId);
+        }
+
+        if (! empty($filters['salesman_id'])) {
+            $filters['salesman_id'] = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
+        }
+
+        return $filters;
+    }
+
+    protected function findByUuid(string $uuid): Invoice
+    {
+        return Invoice::with(['details.item', 'customer', 'salesman', 'paymentTerm', 'order', 'delivery'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(Invoice $invoice): array
     {
         return [
             'id' => $invoice->id,
@@ -110,7 +176,10 @@ class InvoiceRepository
             'invoiceDate' => $invoice->invoice_date?->toDateString(),
             'dueDate' => $invoice->invoice_due_date?->toDateString(),
             'customerId' => $invoice->customer?->uuid,
+            'customerName' => $invoice->customer?->shop_name
+                ?: trim(($invoice->customer?->firstname ?? '').' '.($invoice->customer?->lastname ?? '')),
             'orderId' => $invoice->order?->uuid,
+            'orderNumber' => $invoice->order?->order_number,
             'deliveryId' => $invoice->delivery?->uuid,
             'salesmanId' => $invoice->salesman?->uuid,
             'paymentTermId' => $invoice->paymentTerm?->uuid,
@@ -133,12 +202,10 @@ class InvoiceRepository
             'items' => $invoice->relationLoaded('details')
                 ? $invoice->details->map(fn (InvoiceDetail $d) => $this->detailResource($d))->values()->all()
                 : [],
-            'createdAt' => $invoice->created_at?->toISOString(),
-            'updatedAt' => $invoice->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(Invoice $invoice): array
+    protected function toSelectOption(Invoice $invoice): array
     {
         return [
             'value' => $invoice->uuid,
@@ -146,58 +213,14 @@ class InvoiceRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Invoice::with(['customer', 'salesman'])
-            ->where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('invoice_number', 'like', "%{$search}%")
-                    ->orWhere('customer_lpo', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['customer_id'])) {
-            $customerId = $this->resolveCustomerId($filters['customer_id'], $organisationId);
-            if ($customerId) {
-                $query->where('customer_id', $customerId);
-            }
-        }
-
-        if (! empty($filters['salesman_id'])) {
-            $salesmanId = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
-            if ($salesmanId) {
-                $query->where('salesman_id', $salesmanId);
-            }
-        }
-
-        if (! empty($filters['current_stage'])) {
-            $query->where('current_stage', $filters['current_stage']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('invoice_date', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('invoice_date', '<=', $filters['date_to']);
-        }
-
-        return $query;
-    }
-
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function headerAttributes(array $data, int $organisationId, ?int $userId = null, ?Invoice $existing = null): array
+    protected function headerAttributes(array $data, ?int $userId = null, ?Invoice $existing = null): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $today = Carbon::today()->toDateString();
         $invoiceNumber = $data['invoiceNumber'] ?? $existing?->invoice_number;
         if ($invoiceNumber === null || $invoiceNumber === '') {
@@ -211,7 +234,6 @@ class InvoiceRepository
         $invoiceType = (string) $invoiceType;
 
         $attrs = [
-            'organisation_id' => $organisationId,
             'customer_id' => $this->resolveCustomerId($data['customerId'] ?? null, $organisationId),
             'order_id' => $this->resolveOrderId($data['orderId'] ?? null, $organisationId),
             'delivery_id' => $this->resolveDeliveryId($data['deliveryId'] ?? null, $organisationId),
@@ -250,8 +272,10 @@ class InvoiceRepository
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    protected function mapLines(array $items, int $organisationId): array
+    protected function mapLines(array $items): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $lines = [];
 
         foreach ($items as $item) {

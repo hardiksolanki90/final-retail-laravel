@@ -8,83 +8,49 @@ use App\Http\Requests\UpdateAreaRequest;
 use App\Repositories\AreaRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class AreaController extends Controller
+class AreaController extends Controller implements HasMiddleware
 {
-    public function __construct(protected AreaRepository $areas) {}
+    protected $repository;
+
+    public function __construct(AreaRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('area');
+    }
 
     public function list(Request $request): JsonResponse
     {
-        $paginated = $this->areas->list(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-            (int) $request->input('per_page', 15),
-        );
-
-        return response()->json([
-            'data' => $paginated->getCollection()->map(fn ($item) => $this->areas->toResource($item))->values(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-                'last_page' => $paginated->lastPage(),
-                'has_more_pages' => $paginated->hasMorePages(),
-                'next_page_url' => $paginated->nextPageUrl(),
-                'prev_page_url' => $paginated->previousPageUrl(),
-            ],
-            'message' => 'Areas retrieved successfully.',
-        ]);
+        return $this->repository->list($request);
     }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->areas->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->areas->toSelectOption($item))->values(),
-            'message' => 'Areas retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->areas->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->areas->toResource($item),
-            'message' => 'Area retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreAreaRequest $request): JsonResponse
     {
-        $item = $this->areas->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->areas->toResource($item),
-            'message' => 'Area created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateAreaRequest $request): JsonResponse
     {
-        $item = $this->areas->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->areas->toResource($item),
-            'message' => 'Area updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
-    public function destroy(Request $request): JsonResponse
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->areas->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Area deleted successfully.']);
+        return $this->repository->destroyByUuid($uuid);
     }
 }

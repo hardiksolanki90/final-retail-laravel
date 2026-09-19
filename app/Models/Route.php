@@ -8,20 +8,24 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
     'organisation_id',
     'area_id',
     'depot_id',
-    'van_id',
     'route_code',
     'route_name',
     'status',
 ])]
 class Route extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['route_code', 'route_name'];
+    protected array $filterable = ['area_id', 'depot_id', 'status'];
 
     protected function casts(): array
     {
@@ -40,5 +44,15 @@ class Route extends Model
     public function organisation(): BelongsTo
     {
         return $this->belongsTo(Organisation::class);
+    }
+
+    public function area(): BelongsTo
+    {
+        return $this->belongsTo(Area::class);
+    }
+
+    public function depot(): BelongsTo
+    {
+        return $this->belongsTo(Depot::class);
     }
 }

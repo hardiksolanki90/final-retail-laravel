@@ -2,85 +2,116 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreCountryRequest;
+use App\Http\Requests\UpdateCountryRequest;
+use App\Http\Resources\CountryList;
+use App\Http\Resources\CountryView;
 use App\Models\Country;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use App\Models\CountryMaster;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CountryRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = Country::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Country $item) => (new CountryList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'countries'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = Country::filter($request->only(['search', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (Country $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'countries'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Country
+    /**
+     * Global ISO reference list — used by the public registration form
+     * (which runs before any organisation/tenant exists) and by any
+     * authenticated "pick a country" selector.
+     */
+    public function publicList(): JsonResponse
     {
-        return Country::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
-    }
+        $items = CountryMaster::orderBy('name')->get();
 
-    public function create(array $data, int $organisationId): Country
-    {
-        return Country::create([
-            'organisation_id' => $organisationId,
-            'name' => $data['name'] ?? '',
-            'country_code' => $data['countryCode'] ?? '',
-            'dial_code' => $data['dialCode'] ?? null,
-            'currency' => $data['currency'] ?? '',
-            'currency_code' => $data['currencyCode'] ?? null,
-            'currency_symbol' => $data['currencySymbol'] ?? '',
-            'status' => $data['status'] ?? true,
+        return response()->json([
+            'data' => $items->map(fn (CountryMaster $item) => [
+                'id' => $item->id,
+                'name' => $item->name,
+                'countryCode' => $item->country_code,
+            ])->values(),
+            'message' => 'Countries retrieved successfully.',
         ]);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Country
+    public function show(string $uuid): JsonResponse
     {
-        $country = $this->findByUuid($uuid, $organisationId);
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new CountryView($item))->resolve(),
+            'message' => 'Country retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreCountryRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $countryMaster = CountryMaster::findOrFail($data['countryMasterId']);
+
+        $item = Country::create(array_merge($countryMaster->toCountrySnapshot(), [
+            'status' => $data['status'] ?? true,
+        ]));
+
+        return response()->json([
+            'data' => (new CountryView($item))->resolve(),
+            'message' => 'Country created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateCountryRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $country = $this->findByUuid($uuid);
+
+        if (isset($data['countryMasterId'])) {
+            $countryMaster = CountryMaster::findOrFail($data['countryMasterId']);
+            $country->fill($countryMaster->toCountrySnapshot());
+        }
 
         $country->fill([
-            'name' => $data['name'] ?? $country->name,
-            'country_code' => $data['countryCode'] ?? $country->country_code,
-            'dial_code' => array_key_exists('dialCode', $data) ? $data['dialCode'] : $country->dial_code,
-            'currency' => $data['currency'] ?? $country->currency,
-            'currency_code' => array_key_exists('currencyCode', $data) ? $data['currencyCode'] : $country->currency_code,
-            'currency_symbol' => $data['currencySymbol'] ?? $country->currency_symbol,
             'status' => array_key_exists('status', $data) ? $data['status'] : $country->status,
         ]);
         $country->save();
 
-        return $country->fresh();
+        return response()->json([
+            'data' => (new CountryView($country->fresh()))->resolve(),
+            'message' => 'Country updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Country deleted successfully.']);
     }
 
-    public function toResource(Country $country): array
+    protected function findByUuid(string $uuid): Country
     {
-        return [
-            'id' => $country->id,
-            'uuid' => $country->uuid,
-            'name' => $country->name,
-            'countryCode' => $country->country_code,
-            'dialCode' => $country->dial_code,
-            'currency' => $country->currency,
-            'currencyCode' => $country->currency_code,
-            'currencySymbol' => $country->currency_symbol,
-            'status' => (bool) $country->status,
-            'createdAt' => $country->created_at?->toISOString(),
-            'updatedAt' => $country->updated_at?->toISOString(),
-        ];
+        return Country::where('uuid', $uuid)->firstOrFail();
     }
 
-    public function toSelectOption(Country $country): array
+    protected function toSelectOption(Country $country): array
     {
         return [
             'id' => $country->id,
@@ -88,25 +119,6 @@ class CountryRepository
             'name' => $country->name,
             'countryCode' => $country->country_code,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Country::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                    ->orWhere('country_code', 'like', "%{$search}%")
-                    ->orWhere('currency_code', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

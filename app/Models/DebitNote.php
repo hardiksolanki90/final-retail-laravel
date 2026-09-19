@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid', 'organisation_id', 'invoice_id', 'customer_id', 'salesman_id', 'route_id',
@@ -20,7 +22,11 @@ use Illuminate\Support\Str;
 ])]
 class DebitNote extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['debit_note_number', 'reason'];
+    protected array $filterable = ['customer_id', 'salesman_id', 'status'];
+    protected string $dateRangeColumn = 'debit_note_date';
 
     protected function casts(): array
     {

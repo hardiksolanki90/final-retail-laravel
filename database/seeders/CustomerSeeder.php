@@ -29,16 +29,15 @@ class CustomerSeeder extends Seeder
         $channels = Channel::all();
         $paymentTerms = PaymentTerm::all();
         $routes = Route::all();
-        $salesmen = User::whereHas('roles', fn($q) => $q->where('name', 'salesman'))->get();
+        // $salesmen = User::whereHas('roles', fn($q) => $q->where('name', 'salesman'))->get();
 
-        if ($salesmen->isEmpty()) {
-            $salesmen = User::all();
-        }
+        // if ($salesmen->isEmpty()) {
+        //     $salesmen = User::all();
+        // }
 
         $customers = [
             [
                 'customer_code' => 'CUST001',
-                'erp_code' => 'ERP001',
                 'shop_name' => 'Metro Supermarket',
                 'firstname' => 'Rajesh',
                 'lastname' => 'Kumar',
@@ -58,7 +57,6 @@ class CustomerSeeder extends Seeder
             ],
             [
                 'customer_code' => 'CUST002',
-                'erp_code' => 'ERP002',
                 'shop_name' => 'Reliance Fresh',
                 'firstname' => 'Priya',
                 'lastname' => 'Sharma',
@@ -78,7 +76,6 @@ class CustomerSeeder extends Seeder
             ],
             [
                 'customer_code' => 'CUST003',
-                'erp_code' => 'ERP003',
                 'shop_name' => 'Big Bazaar',
                 'firstname' => 'Amit',
                 'lastname' => 'Patel',
@@ -98,7 +95,6 @@ class CustomerSeeder extends Seeder
             ],
             [
                 'customer_code' => 'CUST004',
-                'erp_code' => 'ERP004',
                 'shop_name' => 'DMart',
                 'firstname' => 'Sunita',
                 'lastname' => 'Singh',
@@ -118,7 +114,6 @@ class CustomerSeeder extends Seeder
             ],
             [
                 'customer_code' => 'CUST005',
-                'erp_code' => 'ERP005',
                 'shop_name' => 'Spencer\'s Retail',
                 'firstname' => 'Vikram',
                 'lastname' => 'Mehta',
@@ -138,54 +133,53 @@ class CustomerSeeder extends Seeder
             ],
         ];
 
-        foreach ($organisations as $org) {
-            foreach ($customers as $index => $customer) {
-                Customer::create(array_merge($customer, [
-                    'uuid' => fake()->uuid(),
-                    'organisation_id' => $org->id,
-                    'customer_type_id' => $customerTypes->random()?->id,
-                    'customer_category_id' => $customerCategories->where('organisation_id', $org->id)->random()?->id,
-                    'customer_group_id' => $customerGroups->where('organisation_id', $org->id)->random()?->id,
-                    'channel_id' => $channels->where('organisation_id', $org->id)->random()?->id,
-                    'payment_term_id' => $paymentTerms->where('organisation_id', $org->id)->random()?->id,
-                    'route_id' => $routes->where('organisation_id', $org->id)->random()?->id,
-                    'salesman_id' => $salesmen->random()?->id,
-                    'status' => true,
-                ]));
-            }
+        // foreach ($organisations as $org) {
+        //     foreach ($customers as $index => $customer) {
+        //         Customer::create(array_merge($customer, [
+        //             'uuid' => fake()->uuid(),
+        //             'organisation_id' => $org->id,
+        //             'customer_type_id' => $customerTypes->random()?->id,
+        //             'customer_category_id' => $customerCategories->where('organisation_id', $org->id)->random()?->id,
+        //             'customer_group_id' => $customerGroups->where('organisation_id', $org->id)->random()?->id,
+        //             'channel_id' => $channels->where('organisation_id', $org->id)->random()?->id,
+        //             'payment_term_id' => $paymentTerms->where('organisation_id', $org->id)->random()?->id,
+        //             'route_id' => $routes->where('organisation_id', $org->id)->random()?->id,
+        //             'salesman_id' => $salesmen->random()?->id,
+        //             'status' => true,
+        //         ]));
+        //     }
 
-            for ($i = 6; $i <= 25; $i++) {
-                Customer::create([
-                    'uuid' => fake()->uuid(),
-                    'organisation_id' => $org->id,
-                    'customer_code' => 'CUST' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                    'erp_code' => 'ERP' . str_pad($i, 3, '0', STR_PAD_LEFT),
-                    'shop_name' => fake()->company() . ' ' . fake()->randomElement(['Store', 'Shop', 'Mart', 'Retail']),
-                    'firstname' => fake()->firstName(),
-                    'lastname' => fake()->lastName(),
-                    'email' => fake()->unique()->safeEmail(),
-                    'phone' => fake()->unique()->numerify('9##########'),
-                    'address' => fake()->streetAddress(),
-                    'city' => fake()->city(),
-                    'state' => fake()->state(),
-                    'zipcode' => fake()->postcode(),
-                    'latitude' => fake()->latitude(18.9, 19.3),
-                    'longitude' => fake()->longitude(72.7, 73.0),
-                    'balance' => fake()->randomFloat(2, 0, 100000),
-                    'credit_limit' => fake()->randomFloat(2, 10000, 200000),
-                    'credit_days' => fake()->randomElement([0, 7, 15, 30, 45, 60]),
-                    'trn_no' => 'TRN' . fake()->unique()->numerify('######'),
-                    'profile_image' => null,
-                    'customer_type_id' => $customerTypes->random()?->id,
-                    'customer_category_id' => $customerCategories->where('organisation_id', $org->id)->random()?->id,
-                    'customer_group_id' => $customerGroups->where('organisation_id', $org->id)->random()?->id,
-                    'channel_id' => $channels->where('organisation_id', $org->id)->random()?->id,
-                    'payment_term_id' => $paymentTerms->where('organisation_id', $org->id)->random()?->id,
-                    'route_id' => $routes->where('organisation_id', $org->id)->random()?->id,
-                    'salesman_id' => $salesmen->random()?->id,
-                    'status' => fake()->boolean(90),
-                ]);
-            }
-        }
+        //     for ($i = 6; $i <= 25; $i++) {
+        //         Customer::create([
+        //             'uuid' => fake()->uuid(),
+        //             'organisation_id' => $org->id,
+        //             'customer_code' => 'CUST' . str_pad($i, 3, '0', STR_PAD_LEFT),
+        //             'shop_name' => fake()->company() . ' ' . fake()->randomElement(['Store', 'Shop', 'Mart', 'Retail']),
+        //             'firstname' => fake()->firstName(),
+        //             'lastname' => fake()->lastName(),
+        //             'email' => fake()->unique()->safeEmail(),
+        //             'phone' => fake()->unique()->numerify('9##########'),
+        //             'address' => fake()->streetAddress(),
+        //             'city' => fake()->city(),
+        //             'state' => fake()->state(),
+        //             'zipcode' => fake()->postcode(),
+        //             'latitude' => fake()->latitude(18.9, 19.3),
+        //             'longitude' => fake()->longitude(72.7, 73.0),
+        //             'balance' => fake()->randomFloat(2, 0, 100000),
+        //             'credit_limit' => fake()->randomFloat(2, 10000, 200000),
+        //             'credit_days' => fake()->randomElement([0, 7, 15, 30, 45, 60]),
+        //             'trn_no' => 'TRN' . fake()->unique()->numerify('######'),
+        //             'profile_image' => null,
+        //             'customer_type_id' => $customerTypes->random()?->id,
+        //             'customer_category_id' => $customerCategories->where('organisation_id', $org->id)->random()?->id,
+        //             'customer_group_id' => $customerGroups->where('organisation_id', $org->id)->random()?->id,
+        //             'channel_id' => $channels->where('organisation_id', $org->id)->random()?->id,
+        //             'payment_term_id' => $paymentTerms->where('organisation_id', $org->id)->random()?->id,
+        //             'route_id' => $routes->where('organisation_id', $org->id)->random()?->id,
+        //             'salesman_id' => $salesmen->random()?->id,
+        //             'status' => fake()->boolean(90),
+        //         ]);
+        //     }
+        // }
     }
 }

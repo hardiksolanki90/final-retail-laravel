@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -16,7 +18,10 @@ use Illuminate\Support\Str;
 ])]
 class OutletProductCode extends Model
 {
-    use HasFactory;
+    use HasFactory, Organisationid, Filterable;
+
+    protected array $searchable = ['name', 'code'];
+    protected array $filterable = [];
 
     protected static function booted(): void
     {

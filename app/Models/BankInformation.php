@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -17,10 +19,19 @@ use Illuminate\Support\Str;
     'bank_address',
     'account_number',
     'status',
+    'iban',
+    'swift_code',
+    'ifsc_code',
+    'routing_number',
+    'sort_code',
+    'branch_name',
 ])]
 class BankInformation extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['bank_code', 'bank_name', 'account_number'];
+    protected array $filterable = ['status'];
 
     protected function casts(): array
     {

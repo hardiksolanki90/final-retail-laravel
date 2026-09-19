@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -16,7 +17,10 @@ use Illuminate\Support\Str;
 ])]
 class CustomerType extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Filterable;
+
+    protected array $searchable = ['customer_type_code', 'customer_type_name'];
+    protected array $filterable = ['status'];
 
     protected function casts(): array
     {

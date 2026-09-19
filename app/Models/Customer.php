@@ -8,18 +8,38 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
     'organisation_id',
+    'user_id',
     'customer_code',
-    'erp_code',
     'shop_name',
     'firstname',
     'lastname',
     'email',
     'phone',
     'address',
+    'customer_office_address',
+    'customer_office_city',
+    'customer_office_state',
+    'customer_office_zipcode',
+    'customer_office_phone',
+    'customer_office_lat',
+    'customer_office_lang',
+    'customer_home_address',
+    'customer_home_lat',
+    'customer_home_lang',
+    'sales_organisation_id',
+    'country_id',
+    'region_id',
+    'merchandiser_id',
+    'ship_to_party_id',
+    'sold_to_party_id',
+    'payer_id',
+    'bill_to_party_id',
     'city',
     'state',
     'zipcode',
@@ -41,7 +61,10 @@ use Illuminate\Support\Str;
 ])]
 class Customer extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['customer_code', 'shop_name', 'firstname', 'lastname', 'email', 'phone'];
+    protected array $filterable = ['route_id', 'salesman_id', 'customer_type_id', 'customer_category_id', 'channel_id', 'status'];
 
     protected function casts(): array
     {
@@ -67,7 +90,13 @@ class Customer extends Model
         return $this->belongsTo(Organisation::class);
     }
 
-    // Assigned salesman only — customers never log in, this is not a login link.
+    // Optional portal login — null unless the customer has one enabled.
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    // Assigned salesman only — not the customer's own login link (see user()).
     public function salesman(): BelongsTo
     {
         return $this->belongsTo(User::class, 'salesman_id');
@@ -101,5 +130,45 @@ class Customer extends Model
     public function paymentTerm(): BelongsTo
     {
         return $this->belongsTo(PaymentTerm::class);
+    }
+
+    public function salesOrganisation(): BelongsTo
+    {
+        return $this->belongsTo(SalesOrganisation::class, 'sales_organisation_id');
+    }
+
+    public function country(): BelongsTo
+    {
+        return $this->belongsTo(Country::class);
+    }
+
+    public function region(): BelongsTo
+    {
+        return $this->belongsTo(Region::class);
+    }
+
+    public function merchandiser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'merchandiser_id');
+    }
+
+    public function shipToParty(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'ship_to_party_id');
+    }
+
+    public function soldToParty(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'sold_to_party_id');
+    }
+
+    public function payer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'payer_id');
+    }
+
+    public function billToParty(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'bill_to_party_id');
     }
 }

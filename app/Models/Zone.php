@@ -6,16 +6,20 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
+    'zone_code',
     'name',
-    'no_truck',
     'status',
 ])]
 class Zone extends Model
 {
-    use HasFactory;
+    use HasFactory, Filterable;
+
+    protected array $searchable = ['name'];
+    protected array $filterable = ['status'];
 
     protected function casts(): array
     {

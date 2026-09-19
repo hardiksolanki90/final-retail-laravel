@@ -2,58 +2,81 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreCustomerCategoryRequest;
+use App\Http\Requests\UpdateCustomerCategoryRequest;
 use App\Models\CustomerCategory;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CustomerCategoryRepository
 {
-    public function all(array $filters, int $organisationId): Collection
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = CustomerCategory::filter($request->only(['search', 'status']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (CustomerCategory $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'customerCategories'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): CustomerCategory
+    public function all(Request $request): JsonResponse
     {
-        return CustomerCategory::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $paginated = CustomerCategory::filter($request->only(['search', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (CustomerCategory $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'customerCategories'), 200);
     }
 
-    public function create(array $data, int $organisationId): CustomerCategory
+    public function show(string $uuid): JsonResponse
     {
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer category retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreCustomerCategoryRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
         $parentId = $data['parentId'] ?? null;
         $nodeLevel = 0;
 
         if ($parentId) {
-            $parent = CustomerCategory::where('organisation_id', $organisationId)
-                ->where('id', $parentId)
-                ->first();
+            $parent = CustomerCategory::where('id', $parentId)->first();
             $nodeLevel = $parent ? $parent->node_level + 1 : 0;
         }
 
-        return CustomerCategory::create([
-            'organisation_id' => $organisationId,
+        $item = CustomerCategory::create([
             'customer_category_code' => $data['customerCategoryCode'] ?? $data['code'] ?? '',
             'parent_id' => $parentId,
             'node_level' => $data['nodeLevel'] ?? $nodeLevel,
             'customer_category_name' => $data['categoryName'] ?? $data['customerCategoryName'] ?? '',
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer category created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): CustomerCategory
+    public function update(string $uuid, UpdateCustomerCategoryRequest $request): JsonResponse
     {
-        $category = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $category = $this->findByUuid($uuid);
 
         $parentId = array_key_exists('parentId', $data) ? $data['parentId'] : $category->parent_id;
         $nodeLevel = $category->node_level;
 
         if (array_key_exists('parentId', $data)) {
             if ($parentId) {
-                $parent = CustomerCategory::where('organisation_id', $organisationId)
-                    ->where('id', $parentId)
-                    ->first();
+                $parent = CustomerCategory::where('id', $parentId)->first();
                 $nodeLevel = $parent ? $parent->node_level + 1 : 0;
             } else {
                 $nodeLevel = 0;
@@ -69,15 +92,25 @@ class CustomerCategoryRepository
         ]);
         $category->save();
 
-        return $category->fresh();
+        return response()->json([
+            'data' => $this->toResource($category->fresh()),
+            'message' => 'Customer category updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Customer category deleted successfully.']);
     }
 
-    public function toResource(CustomerCategory $category): array
+    protected function findByUuid(string $uuid): CustomerCategory
+    {
+        return CustomerCategory::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(CustomerCategory $category): array
     {
         return [
             'id' => $category->id,
@@ -88,12 +121,10 @@ class CustomerCategoryRepository
             'parentId' => $category->parent_id,
             'nodeLevel' => $category->node_level,
             'status' => (bool) $category->status,
-            'createdAt' => $category->created_at?->toISOString(),
-            'updatedAt' => $category->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(CustomerCategory $category): array
+    protected function toSelectOption(CustomerCategory $category): array
     {
         return [
             'id' => $category->id,
@@ -101,24 +132,5 @@ class CustomerCategoryRepository
             'categoryName' => $category->customer_category_name,
             'name' => $category->customer_category_name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = CustomerCategory::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('customer_category_code', 'like', "%{$search}%")
-                    ->orWhere('customer_category_name', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

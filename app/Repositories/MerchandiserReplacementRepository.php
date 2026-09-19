@@ -2,50 +2,69 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreMerchandiserReplacementRequest;
+use App\Http\Requests\UpdateMerchandiserReplacementRequest;
 use App\Models\MerchandiserReplacement;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class MerchandiserReplacementRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = MerchandiserReplacement::filter($request->only(['old_salesman_id', 'new_salesman_id']))
             ->with(['oldSalesman', 'newSalesman'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (MerchandiserReplacement $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'merchandiserReplacements'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $items = MerchandiserReplacement::filter($request->only(['old_salesman_id', 'new_salesman_id']))
             ->with(['oldSalesman', 'newSalesman'])
             ->orderBy('id')
             ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (MerchandiserReplacement $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Merchandiser replacements retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): MerchandiserReplacement
+    public function show(string $uuid): JsonResponse
     {
-        return MerchandiserReplacement::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Merchandiser replacement retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): MerchandiserReplacement
+    public function store(StoreMerchandiserReplacementRequest $request): JsonResponse
     {
-        return MerchandiserReplacement::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = MerchandiserReplacement::create([
             'old_salesman_id' => $data['oldSalesmanId'],
             'new_salesman_id' => $data['newSalesmanId'],
             'type' => $data['type'],
             'added_on' => $data['addedOn'],
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Merchandiser replacement created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): MerchandiserReplacement
+    public function update(string $uuid, UpdateMerchandiserReplacementRequest $request): JsonResponse
     {
-        $item = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $item = $this->findByUuid($uuid);
 
         $item->fill([
             'old_salesman_id' => $data['oldSalesmanId'] ?? $item->old_salesman_id,
@@ -55,15 +74,34 @@ class MerchandiserReplacementRepository
         ]);
         $item->save();
 
-        return $item->fresh();
+        return response()->json([
+            'data' => $this->toResource($item->fresh()),
+            'message' => 'Merchandiser replacement updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Merchandiser replacement deleted successfully.']);
     }
 
-    public function toResource(MerchandiserReplacement $item): array
+    public function destroyByUuid(string $uuid): JsonResponse
+    {
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Merchandiser replacement deleted successfully.']);
+    }
+
+    protected function findByUuid(string $uuid): MerchandiserReplacement
+    {
+        return MerchandiserReplacement::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(MerchandiserReplacement $item): array
     {
         $resource = [
             'id' => $item->id,
@@ -72,8 +110,6 @@ class MerchandiserReplacementRepository
             'newSalesmanId' => $item->new_salesman_id,
             'type' => $item->type,
             'addedOn' => $item->added_on?->toDateString(),
-            'createdAt' => $item->created_at?->toISOString(),
-            'updatedAt' => $item->updated_at?->toISOString(),
         ];
 
         if ($item->relationLoaded('oldSalesman') && $item->oldSalesman) {
@@ -93,7 +129,7 @@ class MerchandiserReplacementRepository
         return $resource;
     }
 
-    public function toSelectOption(MerchandiserReplacement $item): array
+    protected function toSelectOption(MerchandiserReplacement $item): array
     {
         return [
             'id' => $item->id,
@@ -101,20 +137,5 @@ class MerchandiserReplacementRepository
             'type' => $item->type,
             'addedOn' => $item->added_on?->toDateString(),
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = MerchandiserReplacement::where('organisation_id', $organisationId);
-
-        if (! empty($filters['old_salesman_id'])) {
-            $query->where('old_salesman_id', $filters['old_salesman_id']);
-        }
-
-        if (! empty($filters['new_salesman_id'])) {
-            $query->where('new_salesman_id', $filters['new_salesman_id']);
-        }
-
-        return $query;
     }
 }

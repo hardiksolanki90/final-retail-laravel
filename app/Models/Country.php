@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
     'organisation_id',
+    'country_master_id',
     'name',
     'country_code',
     'dial_code',
@@ -22,7 +25,10 @@ use Illuminate\Support\Str;
 ])]
 class Country extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['name', 'country_code', 'currency_code'];
+    protected array $filterable = ['status'];
 
     protected function casts(): array
     {
@@ -41,5 +47,10 @@ class Country extends Model
     public function organisation(): BelongsTo
     {
         return $this->belongsTo(Organisation::class);
+    }
+
+    public function countryMaster(): BelongsTo
+    {
+        return $this->belongsTo(CountryMaster::class);
     }
 }

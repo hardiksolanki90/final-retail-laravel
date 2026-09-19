@@ -8,60 +8,44 @@ use App\Http\Requests\UpdatePaymentTermRequest;
 use App\Repositories\PaymentTermRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class PaymentTermController extends Controller
+class PaymentTermController extends Controller implements HasMiddleware
 {
-    public function __construct(protected PaymentTermRepository $paymentTerms) {}
+    protected $repository;
+
+    public function __construct(PaymentTermRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('payment-term');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->paymentTerms->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->paymentTerms->toSelectOption($item))->values(),
-            'message' => 'Payment terms retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->paymentTerms->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->paymentTerms->toResource($item),
-            'message' => 'Payment term retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StorePaymentTermRequest $request): JsonResponse
     {
-        $item = $this->paymentTerms->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->paymentTerms->toResource($item),
-            'message' => 'Payment term created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdatePaymentTermRequest $request): JsonResponse
     {
-        $item = $this->paymentTerms->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->paymentTerms->toResource($item),
-            'message' => 'Payment term updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->paymentTerms->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Payment term deleted successfully.']);
+        return $this->repository->destroy($request);
     }
 }

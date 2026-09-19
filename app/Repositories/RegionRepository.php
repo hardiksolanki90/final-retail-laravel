@@ -2,44 +2,68 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreRegionRequest;
+use App\Http\Requests\UpdateRegionRequest;
+use App\Http\Resources\RegionList;
+use App\Http\Resources\RegionView;
 use App\Models\Region;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class RegionRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = Region::filter($this->filters($request))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Region $item) => (new RegionList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'regions'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
-    }
+        $items = Region::filter($this->filters($request))->orderBy('id')->get();
 
-    public function findByUuid(string $uuid, int $organisationId): Region
-    {
-        return Region::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
-    }
-
-    public function create(array $data, int $organisationId): Region
-    {
-        return Region::create([
-            'organisation_id' => $organisationId,
-            'country_id' => $data['countryId'],
-            'region_code' => $data['regionCode'],
-            'region_name' => $data['regionName'],
-            'region_status' => $data['status'] ?? true,
+        return response()->json([
+            'data' => $items->map(fn (Region $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Regions retrieved successfully.',
         ]);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Region
+    public function show(string $uuid): JsonResponse
     {
-        $region = $this->findByUuid($uuid, $organisationId);
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new RegionView($item))->resolve(),
+            'message' => 'Region retrieved successfully.',
+        ]);
+    }
+
+    public function store(StoreRegionRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $countryId = $data['countryId'] ?? \App\Models\Country::value('id') ?? 1;
+
+        $item = Region::create([
+            'country_id' => $countryId,
+            'region_code' => $data['regionCode'] ?? $data['code'] ?? '',
+            'region_name' => $data['regionName'] ?? $data['name'] ?? '',
+            'region_status' => $data['status'] ?? true,
+        ]);
+
+        return response()->json([
+            'data' => (new RegionView($item))->resolve(),
+            'message' => 'Region created successfully.',
+        ], 201);
+    }
+
+    public function update(string $uuid, UpdateRegionRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+        $region = $this->findByUuid($uuid);
 
         $region->fill([
             'country_id' => $data['countryId'] ?? $region->country_id,
@@ -49,58 +73,50 @@ class RegionRepository
         ]);
         $region->save();
 
-        return $region->fresh();
+        return response()->json([
+            'data' => (new RegionView($region->fresh()))->resolve(),
+            'message' => 'Region updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Region deleted successfully.']);
     }
 
-    public function toResource(Region $region): array
+    protected function findByUuid(string $uuid): Region
+    {
+        return Region::where('uuid', $uuid)->firstOrFail();
+    }
+
+    /**
+     * Region's boolean column is `region_status`, not `status`, so the
+     * public `status` query param is remapped to the model's filterable key.
+     * Filterable::scopeFilter only auto-casts a literal `status` key to
+     * boolean, so the value is cast here before it reaches the trait.
+     */
+    protected function filters(Request $request): array
+    {
+        $filters = $request->only(['search', 'country_id', 'status']);
+
+        if (array_key_exists('status', $filters) && $filters['status'] !== null && $filters['status'] !== '') {
+            $filters['region_status'] = filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN);
+        }
+        unset($filters['status']);
+
+        return $filters;
+    }
+
+    protected function toSelectOption(Region $region): array
     {
         return [
             'id' => $region->id,
             'uuid' => $region->uuid,
-            'countryId' => $region->country_id,
-            'regionCode' => $region->region_code,
-            'regionName' => $region->region_name,
-            'status' => (bool) $region->region_status,
-            'createdAt' => $region->created_at?->toISOString(),
-            'updatedAt' => $region->updated_at?->toISOString(),
-        ];
-    }
-
-    public function toSelectOption(Region $region): array
-    {
-        return [
-            'id' => $region->id,
-            'uuid' => $region->uuid,
             'regionCode' => $region->region_code,
             'regionName' => $region->region_name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Region::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $query) use ($search) {
-                $query->where('region_code', 'like', "%{$search}%")
-                    ->orWhere('region_name', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['country_id'])) {
-            $query->where('country_id', $filters['country_id']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('region_status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+

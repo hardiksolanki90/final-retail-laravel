@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -24,7 +26,10 @@ use Illuminate\Support\Str;
 ])]
 class Van extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    protected array $searchable = ['van_code', 'plate_number', 'description'];
+    protected array $filterable = ['area_id', 'van_type_id', 'van_status'];
 
     protected function casts(): array
     {

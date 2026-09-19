@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Organisationid;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid', 'organisation_id', 'load_number', 'depot_id', 'route_id', 'trip_id',
@@ -18,7 +20,17 @@ use Illuminate\Support\Str;
 ])]
 class SalesmanLoad extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Organisationid, Filterable;
+
+    // salesman_id and status are deliberately absent from $filterable: the
+    // salesman_id filter value is a salesman UUID that must be resolved to
+    // an internal id first, and status accepts either a pending/loaded
+    // string (mapped to load_confirm) or a boolean — neither fits the
+    // generic pass-through in Filterable::scopeFilter, so
+    // SalesmanLoadRepository applies both manually.
+    protected array $searchable = ['load_number'];
+    protected array $filterable = [];
+    protected string $dateRangeColumn = 'load_date';
 
     protected function casts(): array
     {

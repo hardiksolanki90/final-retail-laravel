@@ -56,6 +56,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Frontend URL
+    |--------------------------------------------------------------------------
+    |
+    | Base URL of the React SPA. Used to build links back to the frontend
+    | from backend-generated content (e.g. the password reset email).
+    |
+    */
+
+    'frontend_url' => env('FRONTEND_URL', 'http://retail-chain.test:10001'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
     |

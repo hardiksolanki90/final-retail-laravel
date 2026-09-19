@@ -2,18 +2,23 @@
 
 namespace App\Repositories\Concerns;
 
+use App\Models\CreditNote;
 use App\Models\Customer;
 use App\Models\DebitNote;
 use App\Models\Delivery;
 use App\Models\Depot;
+use App\Models\Division;
+use App\Models\GoodReceiptNote;
 use App\Models\Invoice;
 use App\Models\Item;
 use App\Models\ItemUom;
+use App\Models\JourneyPlan;
 use App\Models\Order;
 use App\Models\PaymentTerm;
 use App\Models\ReasonType;
 use App\Models\Route;
 use App\Models\SalesmanLoad;
+use App\Models\SalesmanUnload;
 use App\Models\User;
 use App\Models\Van;
 use App\Models\Warehouse;
@@ -69,6 +74,11 @@ trait ResolvesDocumentRelations
             Invoice::class,
             DebitNote::class,
             SalesmanLoad::class,
+            CreditNote::class,
+            GoodReceiptNote::class,
+            JourneyPlan::class,
+            SalesmanUnload::class,
+            Division::class,
         ], true);
     }
 
@@ -129,6 +139,11 @@ trait ResolvesDocumentRelations
     protected function resolveDepotId(mixed $value, int $organisationId): ?int
     {
         return $this->resolveId(Depot::class, $value, $organisationId);
+    }
+
+    protected function resolveDivisionId(mixed $value, int $organisationId): ?int
+    {
+        return $this->resolveId(Division::class, $value, $organisationId);
     }
 
     protected function resolveVanId(mixed $value, int $organisationId): ?int

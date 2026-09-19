@@ -2,33 +2,53 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreCustomerTypeRequest;
+use App\Http\Requests\UpdateCustomerTypeRequest;
 use App\Models\CustomerType;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CustomerTypeRepository
 {
-    public function all(array $filters = []): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters)->orderBy('id')->get();
+        $items = CustomerType::filter($request->only(['search', 'status']))->orderBy('id')->get();
+
+        return response()->json([
+            'data' => $items->map(fn (CustomerType $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Customer types retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid): CustomerType
+    public function show(string $uuid): JsonResponse
     {
-        return CustomerType::where('uuid', $uuid)->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer type retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data): CustomerType
+    public function store(StoreCustomerTypeRequest $request): JsonResponse
     {
-        return CustomerType::create([
+        $data = $request->validated();
+
+        $item = CustomerType::create([
             'customer_type_code' => $data['customerTypeCode'] ?? $data['code'] ?? '',
             'customer_type_name' => $data['name'] ?? $data['customerTypeName'] ?? '',
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer type created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data): CustomerType
+    public function update(string $uuid, UpdateCustomerTypeRequest $request): JsonResponse
     {
+        $data = $request->validated();
         $customerType = $this->findByUuid($uuid);
 
         $customerType->fill([
@@ -38,15 +58,27 @@ class CustomerTypeRepository
         ]);
         $customerType->save();
 
-        return $customerType->fresh();
+        return response()->json([
+            'data' => $this->toResource($customerType->fresh()),
+            'message' => 'Customer type updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Customer type deleted successfully.']);
     }
 
-    public function toResource(CustomerType $customerType): array
+    protected function findByUuid(string $uuid): CustomerType
+    {
+        return CustomerType::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(CustomerType $customerType): array
     {
         return [
             'id' => $customerType->id,
@@ -55,36 +87,15 @@ class CustomerTypeRepository
             'customerTypeCode' => $customerType->customer_type_code,
             'customerTypeName' => $customerType->customer_type_name,
             'status' => (bool) $customerType->status,
-            'createdAt' => $customerType->created_at?->toISOString(),
-            'updatedAt' => $customerType->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(CustomerType $customerType): array
+    protected function toSelectOption(CustomerType $customerType): array
     {
         return [
             'id' => $customerType->id,
             'uuid' => $customerType->uuid,
             'name' => $customerType->customer_type_name,
         ];
-    }
-
-    protected function filtered(array $filters): Builder
-    {
-        $query = CustomerType::query();
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('customer_type_code', 'like', "%{$search}%")
-                    ->orWhere('customer_type_name', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

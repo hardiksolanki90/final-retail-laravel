@@ -2,66 +2,100 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreUserCreditLimitRequest;
+use App\Http\Requests\UpdateUserCreditLimitRequest;
 use App\Models\UserCreditLimit;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class UserCreditLimitRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->paginate($perPage);
+        $paginated = UserCreditLimit::filter($request->only(['user_id', 'credit_limit_type']))
+            ->orderByDesc('id')
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (UserCreditLimit $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'userCreditLimits'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->with('user')->orderBy('id')->get();
+        $items = UserCreditLimit::filter($request->only(['user_id', 'credit_limit_type']))
+            ->with('user')
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (UserCreditLimit $item) => $this->toResource($item))->values(),
+            'message' => 'User credit limits retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): UserCreditLimit
+    public function show(string $uuid): JsonResponse
     {
-        return UserCreditLimit::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'User credit limit retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): UserCreditLimit
+    public function store(StoreUserCreditLimitRequest $request): JsonResponse
     {
-        return UserCreditLimit::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = UserCreditLimit::create([
             'user_id' => $data['userId'],
             'credit_limit_type' => $data['creditLimitType'],
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'User credit limit created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): UserCreditLimit
+    public function update(string $uuid, UpdateUserCreditLimitRequest $request): JsonResponse
     {
-        $userCreditLimit = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $item = $this->findByUuid($uuid);
 
-        $userCreditLimit->fill([
-            'user_id' => $data['userId'] ?? $userCreditLimit->user_id,
-            'credit_limit_type' => $data['creditLimitType'] ?? $userCreditLimit->credit_limit_type,
+        $item->fill([
+            'user_id' => $data['userId'] ?? $item->user_id,
+            'credit_limit_type' => $data['creditLimitType'] ?? $item->credit_limit_type,
         ]);
-        $userCreditLimit->save();
+        $item->save();
 
-        return $userCreditLimit->fresh();
+        return response()->json([
+            'data' => $this->toResource($item->fresh()),
+            'message' => 'User credit limit updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'User credit limit deleted successfully.']);
     }
 
-    public function toResource(UserCreditLimit $userCreditLimit): array
+    protected function findByUuid(string $uuid): UserCreditLimit
+    {
+        return UserCreditLimit::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(UserCreditLimit $userCreditLimit): array
     {
         $resource = [
             'id' => $userCreditLimit->id,
             'uuid' => $userCreditLimit->uuid,
             'userId' => $userCreditLimit->user_id,
             'creditLimitType' => $userCreditLimit->credit_limit_type,
-            'createdAt' => $userCreditLimit->created_at?->toISOString(),
-            'updatedAt' => $userCreditLimit->updated_at?->toISOString(),
         ];
 
         if ($userCreditLimit->relationLoaded('user') && $userCreditLimit->user) {
@@ -72,30 +106,5 @@ class UserCreditLimitRepository
         }
 
         return $resource;
-    }
-
-    public function toSelectOption(UserCreditLimit $userCreditLimit): array
-    {
-        return [
-            'id' => $userCreditLimit->id,
-            'uuid' => $userCreditLimit->uuid,
-            'userId' => $userCreditLimit->user_id,
-            'creditLimitType' => $userCreditLimit->credit_limit_type,
-        ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = UserCreditLimit::where('organisation_id', $organisationId);
-
-        if (! empty($filters['user_id'])) {
-            $query->where('user_id', $filters['user_id']);
-        }
-
-        if (! empty($filters['credit_limit_type'])) {
-            $query->where('credit_limit_type', $filters['credit_limit_type']);
-        }
-
-        return $query;
     }
 }

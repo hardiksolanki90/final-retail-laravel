@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
+use App\Traits\Filterable;
 
 #[Fillable([
     'uuid',
@@ -19,7 +20,10 @@ use Illuminate\Support\Str;
 ])]
 class ReasonType extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, Filterable;
+
+    protected array $searchable = ['name', 'code'];
+    protected array $filterable = ['type', 'status'];
 
     protected function casts(): array
     {

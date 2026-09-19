@@ -14,6 +14,9 @@ class UpdateAreaRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'areaCode' => ['nullable', 'string', 'max:50'],
+            'area_code' => ['nullable', 'string', 'max:50'],
+            'code' => ['nullable', 'string', 'max:50'],
             'areaName' => ['required_without:name', 'nullable', 'string', 'max:191'],
             'name' => ['required_without:areaName', 'nullable', 'string', 'max:191'],
             'parentId' => ['nullable', 'integer'],

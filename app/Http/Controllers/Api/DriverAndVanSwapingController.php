@@ -8,90 +8,54 @@ use App\Http\Requests\UpdateDriverAndVanSwapingRequest;
 use App\Repositories\DriverAndVanSwapingRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class DriverAndVanSwapingController extends Controller
+class DriverAndVanSwapingController extends Controller implements HasMiddleware
 {
-    public function __construct(protected DriverAndVanSwapingRepository $swapings) {}
+    protected $repository;
+
+    public function __construct(DriverAndVanSwapingRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('driver-replacement');
+    }
 
     public function list(Request $request): JsonResponse
     {
-        $paginated = $this->swapings->list(
-            $request->only(['old_salesman_id', 'new_salesman_id', 'reason_id']),
-            $request->user()->organisation_id,
-            (int) $request->input('per_page', 15),
-        );
-
-        return response()->json([
-            'data' => $paginated->getCollection()->map(fn ($item) => $this->swapings->toResource($item))->values(),
-            'meta' => [
-                'current_page' => $paginated->currentPage(),
-                'per_page' => $paginated->perPage(),
-                'total' => $paginated->total(),
-                'last_page' => $paginated->lastPage(),
-                'has_more_pages' => $paginated->hasMorePages(),
-                'next_page_url' => $paginated->nextPageUrl(),
-                'prev_page_url' => $paginated->previousPageUrl(),
-            ],
-            'message' => 'Driver and van swapings retrieved successfully.',
-        ]);
+        return $this->repository->list($request);
     }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->swapings->all(
-            $request->only(['old_salesman_id', 'new_salesman_id', 'reason_id']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->swapings->toSelectOption($item))->values(),
-            'message' => 'Driver and van swapings retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->swapings->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->swapings->toResource($item),
-            'message' => 'Driver and van swaping retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreDriverAndVanSwapingRequest $request): JsonResponse
     {
-        $item = $this->swapings->create($request->validated(), $request->user()->organisation_id, $request->user()->id);
-
-        return response()->json([
-            'data' => $this->swapings->toResource($item),
-            'message' => 'Driver and van swaping created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateDriverAndVanSwapingRequest $request): JsonResponse
     {
-        $item = $this->swapings->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->swapings->toResource($item),
-            'message' => 'Driver and van swaping updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->swapings->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Driver and van swaping deleted successfully.']);
+        return $this->repository->destroy($request);
     }
 
-    public function destroyByUuid(string $uuid, Request $request): JsonResponse
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->swapings->delete($uuid, $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Driver and van swaping deleted successfully.']);
+        return $this->repository->destroyByUuid($uuid);
     }
 }

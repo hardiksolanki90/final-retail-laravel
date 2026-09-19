@@ -2,38 +2,55 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreCustomerGroupRequest;
+use App\Http\Requests\UpdateCustomerGroupRequest;
 use App\Models\CustomerGroup;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class CustomerGroupRepository
 {
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $paginated = CustomerGroup::filter($request->only(['search', 'status']))
+            ->orderBy('id')
+            ->paginate((int) $request->input('per_page', 50))
+            ->through(fn (CustomerGroup $item) => $this->toSelectOption($item));
+
+        return response()->json(paginated($paginated, 'customerGroups'), 200);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): CustomerGroup
+    public function show(string $uuid): JsonResponse
     {
-        return CustomerGroup::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer group retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): CustomerGroup
+    public function store(StoreCustomerGroupRequest $request): JsonResponse
     {
-        return CustomerGroup::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = CustomerGroup::create([
             'group_code' => $data['groupCode'] ?? $data['code'] ?? '',
             'group_name' => $data['groupName'] ?? '',
             'type' => $data['type'] ?? null,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => $this->toResource($item),
+            'message' => 'Customer group created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): CustomerGroup
+    public function update(string $uuid, UpdateCustomerGroupRequest $request): JsonResponse
     {
-        $group = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $group = $this->findByUuid($uuid);
 
         $group->fill([
             'group_code' => $data['groupCode'] ?? $data['code'] ?? $group->group_code,
@@ -43,15 +60,27 @@ class CustomerGroupRepository
         ]);
         $group->save();
 
-        return $group->fresh();
+        return response()->json([
+            'data' => $this->toResource($group->fresh()),
+            'message' => 'Customer group updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroy(Request $request): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $request->validate(['id' => ['required', 'string']]);
+
+        $this->findByUuid((string) $request->input('id'))->delete();
+
+        return response()->json(['message' => 'Customer group deleted successfully.']);
     }
 
-    public function toResource(CustomerGroup $group): array
+    protected function findByUuid(string $uuid): CustomerGroup
+    {
+        return CustomerGroup::where('uuid', $uuid)->firstOrFail();
+    }
+
+    protected function toResource(CustomerGroup $group): array
     {
         return [
             'id' => $group->id,
@@ -60,12 +89,10 @@ class CustomerGroupRepository
             'groupCode' => $group->group_code,
             'type' => $group->type,
             'status' => (bool) $group->status,
-            'createdAt' => $group->created_at?->toISOString(),
-            'updatedAt' => $group->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(CustomerGroup $group): array
+    protected function toSelectOption(CustomerGroup $group): array
     {
         return [
             'id' => $group->id,
@@ -73,24 +100,5 @@ class CustomerGroupRepository
             'groupName' => $group->group_name,
             'name' => $group->group_name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = CustomerGroup::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('group_code', 'like', "%{$search}%")
-                    ->orWhere('group_name', 'like', "%{$search}%");
-            });
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }

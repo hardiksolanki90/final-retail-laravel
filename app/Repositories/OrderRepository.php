@@ -2,47 +2,72 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\BulkOrderActionRequest;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
 use App\Models\Order;
 use App\Models\OrderDetail;
 use App\Repositories\Concerns\ResolvesDocumentRelations;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class OrderRepository
 {
     use ResolvesDocumentRelations;
 
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = Order::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Order $item) => $this->toResource($item));
+
+        return response()->json(paginated($paginated, 'orders'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function search(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderByDesc('id')->get();
+        return $this->list($request);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Order
+    public function all(Request $request): JsonResponse
     {
-        return Order::with(['details.item', 'customer', 'salesman', 'paymentTerm'])
-            ->where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $items = Order::filter($this->resolvedFilters($request))
+            ->with(['customer', 'salesman'])
+            ->orderByDesc('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Order $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Orders retrieved successfully.',
+        ], 200);
     }
 
-    public function create(array $data, int $organisationId, ?int $userId = null): Order
+    public function show(string $uuid): JsonResponse
     {
-        return DB::transaction(function () use ($data, $organisationId, $userId) {
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $order = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => $this->toResource($order),
+            'message' => 'Order retrieved successfully.',
+        ], 200);
+    }
+
+    public function store(StoreOrderRequest $request): JsonResponse
+    {
+        $data = $request->validated();
+
+        $order = DB::transaction(function () use ($data, $request) {
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $order = Order::create(array_merge(
-                $this->headerAttributes($data, $organisationId, $userId),
+                $this->headerAttributes($data, $request->user()->id),
                 $totals,
             ));
 
@@ -52,20 +77,25 @@ class OrderRepository
 
             return $order->load(['details.item', 'customer', 'salesman', 'paymentTerm']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($order),
+            'message' => 'Order created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Order
+    public function update(string $uuid, UpdateOrderRequest $request): JsonResponse
     {
-        return DB::transaction(function () use ($uuid, $data, $organisationId) {
-            $order = Order::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $data = $request->validated();
 
-            $lines = $this->mapLines($data['items'] ?? [], $organisationId);
+        $order = DB::transaction(function () use ($uuid, $data) {
+            $order = Order::where('uuid', $uuid)->firstOrFail();
+
+            $lines = $this->mapLines($data['items'] ?? []);
             $totals = $this->sumLineTotals($lines);
 
             $order->fill(array_merge(
-                $this->headerAttributes($data, $organisationId, null, $order),
+                $this->headerAttributes($data, null, $order),
                 $totals,
             ))->save();
 
@@ -73,25 +103,33 @@ class OrderRepository
 
             return $order->fresh(['details.item', 'customer', 'salesman', 'paymentTerm']);
         });
+
+        return response()->json([
+            'data' => $this->toResource($order),
+            'message' => 'Order updated successfully.',
+        ], 200);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function delete(Request $request): JsonResponse
     {
-        DB::transaction(function () use ($uuid, $organisationId) {
-            $order = Order::where('organisation_id', $organisationId)
-                ->where('uuid', $uuid)
-                ->firstOrFail();
+        $request->validate(['id' => ['required', 'string']]);
+        $uuid = (string) $request->input('id');
+
+        DB::transaction(function () use ($uuid) {
+            $order = Order::where('uuid', $uuid)->firstOrFail();
 
             $order->details()->delete();
             $order->delete();
         });
+
+        return response()->json(['message' => 'Order deleted successfully.'], 200);
     }
 
-    public function bulkAction(array $uuids, string $action, int $organisationId): void
+    public function bulkAction(BulkOrderActionRequest $request): JsonResponse
     {
-        $query = Order::where('organisation_id', $organisationId)->whereIn('uuid', $uuids);
+        $query = Order::whereIn('uuid', $request->validated('uuids'));
 
-        match ($action) {
+        match ($request->validated('action')) {
             'activate' => $query->update(['status' => true]),
             'deactivate' => $query->update(['status' => false]),
             'delete' => $query->get()->each(function (Order $order) {
@@ -99,9 +137,38 @@ class OrderRepository
                 $order->delete();
             }),
         };
+
+        return response()->json(['message' => 'Bulk action completed successfully.'], 200);
     }
 
-    public function toResource(Order $order): array
+    /**
+     * @return array<string, mixed>
+     */
+    protected function resolvedFilters(Request $request): array
+    {
+        $organisationId = (int) Auth::user()->organisation_id;
+
+        $filters = $request->only(['search', 'customer_id', 'salesman_id', 'current_stage', 'status', 'date_from', 'date_to']);
+
+        if (! empty($filters['customer_id'])) {
+            $filters['customer_id'] = $this->resolveCustomerId($filters['customer_id'], $organisationId);
+        }
+
+        if (! empty($filters['salesman_id'])) {
+            $filters['salesman_id'] = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
+        }
+
+        return $filters;
+    }
+
+    protected function findByUuid(string $uuid): Order
+    {
+        return Order::with(['details.item', 'customer', 'salesman', 'paymentTerm'])
+            ->where('uuid', $uuid)
+            ->firstOrFail();
+    }
+
+    protected function toResource(Order $order): array
     {
         return [
             'id' => $order->id,
@@ -131,12 +198,10 @@ class OrderRepository
             'items' => $order->relationLoaded('details')
                 ? $order->details->map(fn (OrderDetail $d) => $this->detailResource($d))->values()->all()
                 : [],
-            'createdAt' => $order->created_at?->toISOString(),
-            'updatedAt' => $order->updated_at?->toISOString(),
         ];
     }
 
-    public function toSelectOption(Order $order): array
+    protected function toSelectOption(Order $order): array
     {
         return [
             'value' => $order->uuid,
@@ -144,58 +209,14 @@ class OrderRepository
         ];
     }
 
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Order::with(['customer', 'salesman'])
-            ->where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('order_number', 'like', "%{$search}%")
-                    ->orWhere('erp_number', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['customer_id'])) {
-            $customerId = $this->resolveCustomerId($filters['customer_id'], $organisationId);
-            if ($customerId) {
-                $query->where('customer_id', $customerId);
-            }
-        }
-
-        if (! empty($filters['salesman_id'])) {
-            $salesmanId = $this->resolveSalesmanId($filters['salesman_id'], $organisationId);
-            if ($salesmanId) {
-                $query->where('salesman_id', $salesmanId);
-            }
-        }
-
-        if (! empty($filters['current_stage'])) {
-            $query->where('current_stage', $filters['current_stage']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        if (! empty($filters['date_from'])) {
-            $query->whereDate('order_date', '>=', $filters['date_from']);
-        }
-
-        if (! empty($filters['date_to'])) {
-            $query->whereDate('order_date', '<=', $filters['date_to']);
-        }
-
-        return $query;
-    }
-
     /**
      * @param  array<string, mixed>  $data
      * @return array<string, mixed>
      */
-    protected function headerAttributes(array $data, int $organisationId, ?int $userId = null, ?Order $existing = null): array
+    protected function headerAttributes(array $data, ?int $userId = null, ?Order $existing = null): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $today = Carbon::today()->toDateString();
         $orderNumber = $data['orderNumber'] ?? $existing?->order_number;
         if ($orderNumber === null || $orderNumber === '') {
@@ -203,7 +224,6 @@ class OrderRepository
         }
 
         $attrs = [
-            'organisation_id' => $organisationId,
             'customer_id' => $this->resolveCustomerId($data['customerId'] ?? null, $organisationId),
             'salesman_id' => $this->resolveSalesmanId($data['salesmanId'] ?? null, $organisationId),
             'depot_id' => $this->resolveDepotId($data['depotId'] ?? null, $organisationId),
@@ -242,8 +262,10 @@ class OrderRepository
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
-    protected function mapLines(array $items, int $organisationId): array
+    protected function mapLines(array $items): array
     {
+        $organisationId = (int) Auth::user()->organisation_id;
+
         $lines = [];
 
         foreach ($items as $item) {

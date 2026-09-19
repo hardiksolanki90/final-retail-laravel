@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Customer;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -12,19 +13,46 @@ class UpdateCustomerRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'shopName' => $this->shopName ?? trim(($this->firstName ?? '') . ' ' . ($this->lastName ?? '')) ?: 'Customer',
+            'address' => $this->address ?? $this->customerOfficeAddress ?? '',
+            'city' => $this->city ?? $this->customerOfficeCity,
+            'state' => $this->state ?? $this->customerOfficeState,
+            'zipcode' => $this->zipcode ?? $this->customerOfficeZipcode,
+            'phone' => $this->phone ?? $this->phoneNumber,
+        ]);
+    }
+
     public function rules(): array
     {
-        return [
-            'shopName' => ['required', 'string', 'max:191'],
+        // Route {uuid} is customers.uuid, not users.uuid, so a plain
+        // Rule::unique()->ignore() on the users-email check below can't
+        // resolve the right row without first looking the customer up here.
+        $customer = Customer::where('organisation_id', $this->user()->organisation_id)
+            ->where('uuid', $this->route('uuid'))
+            ->first();
+
+        $enableLogin = $this->boolean('enableLogin');
+        $alreadyLinked = (bool) $customer?->user_id;
+
+        $rules = [
+            'shopName' => ['nullable', 'string', 'max:191'],
             'firstName' => ['required', 'string', 'max:191'],
-            'address' => ['required', 'string', 'max:191'],
+            'address' => ['nullable', 'string', 'max:191'],
             'lastName' => ['nullable', 'string', 'max:191'],
+            'enableLogin' => ['nullable', 'boolean'],
             'email' => [
-                'nullable', 'email', 'max:191',
+                $enableLogin ? 'required' : 'nullable', 'email', 'max:191',
                 Rule::unique('customers', 'email')
                     ->where(fn ($query) => $query->where('organisation_id', $this->user()->organisation_id))
                     ->ignore($this->route('uuid'), 'uuid'),
             ],
+            // Required only the first time login is enabled; once already
+            // linked, a blank password means "keep the current one".
+            'password' => [$enableLogin && ! $alreadyLinked ? 'required' : 'nullable', 'string', 'min:8'],
+            'passwordConfirmation' => [$enableLogin && ! $alreadyLinked ? 'required' : 'nullable', 'same:password'],
             'phoneNumber' => ['nullable', 'string', 'max:191'],
             'code' => ['nullable', 'string', 'max:25'],
             'erpCode' => ['nullable', 'string', 'max:50'],
@@ -47,5 +75,11 @@ class UpdateCustomerRequest extends FormRequest
             'channelId' => ['nullable', 'integer'],
             'paymentTermId' => ['nullable', 'integer'],
         ];
+
+        if ($enableLogin) {
+            $rules['email'][] = Rule::unique('users', 'email')->ignore($customer?->user_id);
+        }
+
+        return $rules;
     }
 }

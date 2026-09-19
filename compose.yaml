@@ -1,12 +1,12 @@
 services:
     laravel.test:
         build:
-            context: './vendor/laravel/sail/runtimes/8.5'
+            context: ./vendor/laravel/sail/runtimes/8.5
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
                 MYSQL_CLIENT: mariadb-client
-        image: 'sail-8.5/app'
+        image: sail-8.5/app
         extra_hosts:
             - 'host.docker.internal:host-gateway'
         ports:
@@ -53,7 +53,7 @@ services:
         ports:
             - '${FORWARD_PHPMYADMIN_PORT:-40003}:80'
         environment:
-            PMA_HOST: 'mariadb'
+            PMA_HOST: mariadb
             PMA_PORT: 3306
             UPLOAD_LIMIT: 128M
             MYSQL_ROOT_PASSWORD: '${DB_PASSWORD}'

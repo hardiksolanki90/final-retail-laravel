@@ -21,7 +21,7 @@ class UpdateOrganisationRequest extends FormRequest
             'org_street2' => ['nullable', 'string', 'max:191'],
             'org_city' => ['nullable', 'string', 'max:191'],
             'org_state' => ['nullable', 'string', 'max:191'],
-            'org_country_id' => ['nullable', 'integer'],
+            'country_master_id' => ['nullable', 'integer', 'exists:country_masters,id'],
             'org_postal' => ['nullable', 'string', 'max:191'],
             'org_phone' => ['required', 'string', 'max:191'],
             'org_contact_person' => ['nullable', 'string', 'max:191'],

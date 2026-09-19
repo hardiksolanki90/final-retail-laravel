@@ -3,24 +3,33 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreVanTypeRequest;
 use App\Repositories\VanTypeRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class VanTypeController extends Controller
+class VanTypeController extends Controller implements HasMiddleware
 {
-    public function __construct(protected VanTypeRepository $vanTypes) {}
+    protected $repository;
+
+    public function __construct(VanTypeRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('van-type');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->vanTypes->all(
-            $request->only(['status']),
-            $request->user()->organisation_id,
-        );
+        return $this->repository->all($request);
+    }
 
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->vanTypes->toSelectOption($item))->values(),
-            'message' => 'Van types retrieved successfully.',
-        ]);
+    public function store(StoreVanTypeRequest $request): JsonResponse
+    {
+        return $this->repository->store($request);
     }
 }

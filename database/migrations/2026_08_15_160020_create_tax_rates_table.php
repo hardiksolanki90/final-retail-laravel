@@ -1,3 +1,4 @@
+
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -20,6 +21,7 @@ return new class extends Migration
             $table->string('name', 191);
             $table->string('rate', 191);
             $table->enum('type', ['CGST', 'SGST', 'IGST', 'UTGST', 'Cess']);
+            $table->text('description')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });

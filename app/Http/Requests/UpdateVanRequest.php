@@ -16,7 +16,7 @@ class UpdateVanRequest extends FormRequest
         return [
             'vanCode' => ['required', 'string', 'max:25'],
             'plateNumber' => ['required', 'string', 'max:15'],
-            'description' => ['required', 'string', 'max:191'],
+            'description' => ['nullable', 'string', 'max:191'],
             'capacity' => ['nullable', 'integer'],
             'areaId' => ['nullable', 'integer'],
             'vanTypeId' => ['required', 'integer'],

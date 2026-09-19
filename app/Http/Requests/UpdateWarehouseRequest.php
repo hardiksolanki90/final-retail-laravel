@@ -18,6 +18,7 @@ class UpdateWarehouseRequest extends FormRequest
             'name' => ['required', 'string', 'max:191'],
             'address' => ['nullable', 'string', 'max:191'],
             'manager' => ['nullable', 'string', 'max:191'],
+            'managerPhone' => ['nullable', 'string', 'max:191'],
             'isMain' => ['nullable', 'boolean'],
             'locType' => ['nullable', 'integer'],
             'lat' => ['nullable', 'string', 'max:191'],

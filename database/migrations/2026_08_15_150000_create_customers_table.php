@@ -22,7 +22,6 @@ return new class extends Migration
             $table->foreignId('organisation_id')->constrained('organisations');
 
             $table->string('customer_code', 25);
-            $table->string('erp_code', 50)->nullable();
             $table->string('shop_name', 191);
             $table->string('firstname', 191);
             $table->string('lastname', 191)->nullable();

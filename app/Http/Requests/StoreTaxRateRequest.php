@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Organisation;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StoreTaxRateRequest extends FormRequest
 {
@@ -13,10 +15,18 @@ class StoreTaxRateRequest extends FormRequest
 
     public function rules(): array
     {
+        /** @var Organisation|null $organisation */
+        $organisation = Organisation::find($this->user()->organisation_id);
+        $profile = $organisation?->resolveTaxProfile();
+        $components = $profile['components'] ?? [];
+
         return [
             'name' => ['required', 'string', 'max:191'],
-            'rate' => ['required', 'string', 'max:191'],
-            'type' => ['required', 'in:CGST,SGST,IGST,UTGST,Cess'],
+            'rate' => ['required'],
+            'type' => $components !== []
+                ? ['required', 'string', Rule::in($components)]
+                : ['required', 'string', 'max:191'],
+            'description' => ['nullable', 'string'],
         ];
     }
 }

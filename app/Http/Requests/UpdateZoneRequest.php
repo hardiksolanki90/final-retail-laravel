@@ -14,8 +14,8 @@ class UpdateZoneRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'zoneCode' => ['required', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:191'],
-            'noTruck' => ['required', 'integer'],
             'status' => ['nullable', 'boolean'],
         ];
     }

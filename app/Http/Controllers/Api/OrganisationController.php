@@ -7,28 +7,34 @@ use App\Http\Requests\UpdateOrganisationRequest;
 use App\Repositories\OrganisationRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class OrganisationController extends Controller
+class OrganisationController extends Controller implements HasMiddleware
 {
-    public function __construct(protected OrganisationRepository $organisations) {}
+    protected $repository;
+
+    public function __construct(OrganisationRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('organisation');
+    }
 
     public function current(Request $request): JsonResponse
     {
-        $organisation = $this->organisations->current($request->user());
+        return $this->repository->current($request);
+    }
 
-        return response()->json([
-            'data' => $organisation,
-            'message' => 'Organisation retrieved successfully.',
-        ]);
+    public function details(Request $request): JsonResponse
+    {
+        return $this->repository->details($request);
     }
 
     public function update(UpdateOrganisationRequest $request): JsonResponse
     {
-        $organisation = $this->organisations->update($request->user(), $request->validated());
-
-        return response()->json([
-            'data' => $organisation,
-            'message' => 'Organisation updated successfully.',
-        ]);
+        return $this->repository->update($request);
     }
 }

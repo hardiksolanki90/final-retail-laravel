@@ -8,60 +8,44 @@ use App\Http\Requests\UpdateCustomerGroupRequest;
 use App\Repositories\CustomerGroupRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Controllers\HasMiddleware;
 
-class CustomerGroupController extends Controller
+class CustomerGroupController extends Controller implements HasMiddleware
 {
-    public function __construct(protected CustomerGroupRepository $customerGroups) {}
+    protected $repository;
+
+    public function __construct(CustomerGroupRepository $repository)
+    {
+        $this->repository = $repository;
+    }
+
+    public static function middleware(): array
+    {
+        return permissionMiddleware('customer-group');
+    }
 
     public function all(Request $request): JsonResponse
     {
-        $items = $this->customerGroups->all(
-            $request->only(['search', 'status']),
-            $request->user()->organisation_id,
-        );
-
-        return response()->json([
-            'data' => $items->map(fn ($item) => $this->customerGroups->toSelectOption($item))->values(),
-            'message' => 'Customer groups retrieved successfully.',
-        ]);
+        return $this->repository->all($request);
     }
 
-    public function show(string $uuid, Request $request): JsonResponse
+    public function show(string $uuid): JsonResponse
     {
-        $item = $this->customerGroups->findByUuid($uuid, $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerGroups->toResource($item),
-            'message' => 'Customer group retrieved successfully.',
-        ]);
+        return $this->repository->show($uuid);
     }
 
     public function store(StoreCustomerGroupRequest $request): JsonResponse
     {
-        $item = $this->customerGroups->create($request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerGroups->toResource($item),
-            'message' => 'Customer group created successfully.',
-        ], 201);
+        return $this->repository->store($request);
     }
 
     public function update(string $uuid, UpdateCustomerGroupRequest $request): JsonResponse
     {
-        $item = $this->customerGroups->update($uuid, $request->validated(), $request->user()->organisation_id);
-
-        return response()->json([
-            'data' => $this->customerGroups->toResource($item),
-            'message' => 'Customer group updated successfully.',
-        ]);
+        return $this->repository->update($uuid, $request);
     }
 
     public function destroy(Request $request): JsonResponse
     {
-        $request->validate(['id' => ['required', 'string']]);
-
-        $this->customerGroups->delete((string) $request->input('id'), $request->user()->organisation_id);
-
-        return response()->json(['message' => 'Customer group deleted successfully.']);
+        return $this->repository->destroy($request);
     }
 }

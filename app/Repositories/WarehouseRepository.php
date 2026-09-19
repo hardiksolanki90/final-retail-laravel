@@ -2,40 +2,58 @@
 
 namespace App\Repositories;
 
+use App\Http\Requests\StoreWarehouseRequest;
+use App\Http\Requests\UpdateWarehouseRequest;
+use App\Http\Resources\WarehouseList;
+use App\Http\Resources\WarehouseView;
 use App\Models\Warehouse;
-use Illuminate\Contracts\Pagination\LengthAwarePaginator;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class WarehouseRepository
 {
-    public function list(array $filters, int $organisationId, int $perPage = 15): LengthAwarePaginator
+    public function list(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)
+        $paginated = Warehouse::filter($request->only(['search', 'depot_id', 'route_id', 'status']))
             ->orderByDesc('id')
-            ->paginate($perPage);
+            ->paginate((int) $request->input('per_page', 15))
+            ->through(fn (Warehouse $item) => (new WarehouseList($item))->resolve());
+
+        return response()->json(paginated($paginated, 'warehouses'), 200);
     }
 
-    public function all(array $filters, int $organisationId): Collection
+    public function all(Request $request): JsonResponse
     {
-        return $this->filtered($filters, $organisationId)->orderBy('id')->get();
+        $items = Warehouse::filter($request->only(['search', 'depot_id', 'route_id', 'status']))
+            ->orderBy('id')
+            ->get();
+
+        return response()->json([
+            'data' => $items->map(fn (Warehouse $item) => $this->toSelectOption($item))->values(),
+            'message' => 'Warehouses retrieved successfully.',
+        ]);
     }
 
-    public function findByUuid(string $uuid, int $organisationId): Warehouse
+    public function show(string $uuid): JsonResponse
     {
-        return Warehouse::where('organisation_id', $organisationId)
-            ->where('uuid', $uuid)
-            ->firstOrFail();
+        $item = $this->findByUuid($uuid);
+
+        return response()->json([
+            'data' => (new WarehouseView($item))->resolve(),
+            'message' => 'Warehouse retrieved successfully.',
+        ]);
     }
 
-    public function create(array $data, int $organisationId): Warehouse
+    public function store(StoreWarehouseRequest $request): JsonResponse
     {
-        return Warehouse::create([
-            'organisation_id' => $organisationId,
+        $data = $request->validated();
+
+        $item = Warehouse::create([
             'code' => $data['code'] ?? '',
             'name' => $data['name'] ?? '',
             'address' => $data['address'] ?? null,
             'manager' => $data['manager'] ?? null,
+            'manager_phone' => $data['managerPhone'] ?? null,
             'is_main' => $data['isMain'] ?? false,
             'loc_type' => $data['locType'] ?? null,
             'lat' => $data['lat'] ?? null,
@@ -45,17 +63,24 @@ class WarehouseRepository
             'parent_warehouse_id' => $data['parentWarehouseId'] ?? null,
             'status' => $data['status'] ?? true,
         ]);
+
+        return response()->json([
+            'data' => (new WarehouseView($item))->resolve(),
+            'message' => 'Warehouse created successfully.',
+        ], 201);
     }
 
-    public function update(string $uuid, array $data, int $organisationId): Warehouse
+    public function update(string $uuid, UpdateWarehouseRequest $request): JsonResponse
     {
-        $warehouse = $this->findByUuid($uuid, $organisationId);
+        $data = $request->validated();
+        $warehouse = $this->findByUuid($uuid);
 
         $warehouse->fill([
             'code' => $data['code'] ?? $warehouse->code,
             'name' => $data['name'] ?? $warehouse->name,
             'address' => array_key_exists('address', $data) ? $data['address'] : $warehouse->address,
             'manager' => array_key_exists('manager', $data) ? $data['manager'] : $warehouse->manager,
+            'manager_phone' => array_key_exists('managerPhone', $data) ? $data['managerPhone'] : $warehouse->manager_phone,
             'is_main' => array_key_exists('isMain', $data) ? $data['isMain'] : $warehouse->is_main,
             'loc_type' => array_key_exists('locType', $data) ? $data['locType'] : $warehouse->loc_type,
             'lat' => array_key_exists('lat', $data) ? $data['lat'] : $warehouse->lat,
@@ -67,37 +92,25 @@ class WarehouseRepository
         ]);
         $warehouse->save();
 
-        return $warehouse->fresh();
+        return response()->json([
+            'data' => (new WarehouseView($warehouse->fresh()))->resolve(),
+            'message' => 'Warehouse updated successfully.',
+        ]);
     }
 
-    public function delete(string $uuid, int $organisationId): void
+    public function destroyByUuid(string $uuid): JsonResponse
     {
-        $this->findByUuid($uuid, $organisationId)->delete();
+        $this->findByUuid($uuid)->delete();
+
+        return response()->json(['message' => 'Warehouse deleted successfully.']);
     }
 
-    public function toResource(Warehouse $warehouse): array
+    protected function findByUuid(string $uuid): Warehouse
     {
-        return [
-            'id' => $warehouse->id,
-            'uuid' => $warehouse->uuid,
-            'code' => $warehouse->code,
-            'name' => $warehouse->name,
-            'address' => $warehouse->address,
-            'manager' => $warehouse->manager,
-            'isMain' => (bool) $warehouse->is_main,
-            'locType' => $warehouse->loc_type,
-            'lat' => $warehouse->lat,
-            'lang' => $warehouse->lang,
-            'depotId' => $warehouse->depot_id,
-            'routeId' => $warehouse->route_id,
-            'parentWarehouseId' => $warehouse->parent_warehouse_id,
-            'status' => (bool) $warehouse->status,
-            'createdAt' => $warehouse->created_at?->toISOString(),
-            'updatedAt' => $warehouse->updated_at?->toISOString(),
-        ];
+        return Warehouse::where('uuid', $uuid)->firstOrFail();
     }
 
-    public function toSelectOption(Warehouse $warehouse): array
+    protected function toSelectOption(Warehouse $warehouse): array
     {
         return [
             'id' => $warehouse->id,
@@ -105,32 +118,6 @@ class WarehouseRepository
             'code' => $warehouse->code,
             'name' => $warehouse->name,
         ];
-    }
-
-    protected function filtered(array $filters, int $organisationId): Builder
-    {
-        $query = Warehouse::where('organisation_id', $organisationId);
-
-        if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->where(function (Builder $q) use ($search) {
-                $q->where('code', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
-            });
-        }
-
-        if (! empty($filters['depot_id'])) {
-            $query->where('depot_id', $filters['depot_id']);
-        }
-
-        if (! empty($filters['route_id'])) {
-            $query->where('route_id', $filters['route_id']);
-        }
-
-        if (isset($filters['status']) && $filters['status'] !== '') {
-            $query->where('status', filter_var($filters['status'], FILTER_VALIDATE_BOOLEAN));
-        }
-
-        return $query;
     }
 }
+
